@@ -1,0 +1,10 @@
+{
+  "name": "Bench",
+  "short_name": "Bench",
+  "description": "Tasks, notes, focus, money, trips and game-dev tools in one offline workbench.",
+  "start_url": "./#today",
+  "display": "standalone",
+  "background_color": "#f1f2ee",
+  "theme_color": "#17191c",
+  "icons": [{ "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

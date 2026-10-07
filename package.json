@@ -1,0 +1,13 @@
+{
+  "name": "bench",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tasks, notes, focus, money, trips and game-dev tools in one offline workbench.",
+  "scripts": {
+    "start": "npx --yes http-server -c-1 -p 8080 .",
+    "test": "node --test tests/core.test.js",
+    "build": "node tools/build.mjs && node tools/build.mjs --artifact",
+    "smoke": "node tools/smoke.mjs"
+  },
+  "license": "MIT"
+}

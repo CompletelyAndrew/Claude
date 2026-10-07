@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Unit tests (three time zones)
+        run: |
+          for tz in America/Los_Angeles UTC Asia/Tokyo; do TZ=$tz npm test; done
+      - name: Build single-file app
+        run: npm run build
+      - name: Browser smoke test
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          npm run smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-build-and-screenshots
+          path: dist/
+
+  # Publishes the app to GitHub Pages from main. Enable Pages → "GitHub Actions" in repo settings.
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp -r index.html sw.js manifest.webmanifest css js assets _site/
+      - uses: actions/upload-pages-artifact@v3
+      - id: deployment
+        uses: actions/deploy-pages@v4
