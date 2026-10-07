@@ -118,10 +118,12 @@
   }
 
   // ---------------------------------------------------------------- theme
+  let themeSetByUs = false;
   function applyTheme() {
     const t = store.get('settings', {}).theme || 'system';
-    if (t === 'system') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', t);
+    // On "system", only clear a theme we set ourselves, so a host page's choice survives
+    if (t === 'system') { if (themeSetByUs) document.documentElement.removeAttribute('data-theme'); themeSetByUs = false; }
+    else { document.documentElement.setAttribute('data-theme', t); themeSetByUs = true; }
   }
   function cycleTheme() {
     const order = ['system', 'light', 'dark'];
@@ -133,6 +135,7 @@
     applyTheme();
   }
   Bench.cycleTheme = cycleTheme;
+  Bench.applyTheme = applyTheme;
 
   // ---------------------------------------------------------------- backup
   Bench.exportBackup = () => {

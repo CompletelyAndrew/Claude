@@ -37,7 +37,7 @@
             h('div.sheet-body.stack', null,
               h('div.seg', { role: 'group', 'aria-label': 'Theme' }, ['system', 'light', 'dark'].map(t => h('button', { type: 'button', 'aria-pressed': String(theme === t), onclick: () => {
                 store.update('settings', x => ({ ...x, theme: t }), {});
-                if (t === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
+                Bench.applyTheme();
                 Bench.navigate('settings');
               } }, t === 'system' ? 'Match system' : t[0].toUpperCase() + t.slice(1)))),
               h('label.field', null, h('span', null, 'Currency'),

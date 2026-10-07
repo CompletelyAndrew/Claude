@@ -1540,10 +1540,12 @@ window.Bench = window.Bench || {}; window.Bench.SINGLE_FILE = true;
   }
 
   // ---------------------------------------------------------------- theme
+  let themeSetByUs = false;
   function applyTheme() {
     const t = store.get('settings', {}).theme || 'system';
-    if (t === 'system') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', t);
+    // On "system", only clear a theme we set ourselves, so a host page's choice survives
+    if (t === 'system') { if (themeSetByUs) document.documentElement.removeAttribute('data-theme'); themeSetByUs = false; }
+    else { document.documentElement.setAttribute('data-theme', t); themeSetByUs = true; }
   }
   function cycleTheme() {
     const order = ['system', 'light', 'dark'];
@@ -1555,6 +1557,7 @@ window.Bench = window.Bench || {}; window.Bench.SINGLE_FILE = true;
     applyTheme();
   }
   Bench.cycleTheme = cycleTheme;
+  Bench.applyTheme = applyTheme;
 
   // ---------------------------------------------------------------- backup
   Bench.exportBackup = () => {
@@ -3780,7 +3783,7 @@ Back to [[Tanks design notes]].`,
             h('div.sheet-body.stack', null,
               h('div.seg', { role: 'group', 'aria-label': 'Theme' }, ['system', 'light', 'dark'].map(t => h('button', { type: 'button', 'aria-pressed': String(theme === t), onclick: () => {
                 store.update('settings', x => ({ ...x, theme: t }), {});
-                if (t === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
+                Bench.applyTheme();
                 Bench.navigate('settings');
               } }, t === 'system' ? 'Match system' : t[0].toUpperCase() + t.slice(1)))),
               h('label.field', null, h('span', null, 'Currency'),
