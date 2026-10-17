@@ -6,15 +6,17 @@
  */
 (function (root) {
   'use strict';
-  const Q = typeof module !== 'undefined' && module.exports ? require('./qr.js') : root.Bench.qr;
+  const node = typeof module !== 'undefined' && module.exports;
+  const Q = node ? require('./qr.js') : root.Bench.qr;
+  const P = node ? require('./qrpayload.js') : root.Bench.qrpayload;
 
   const LEVELS = [
     { n: 1, id: 'anatomy', title: 'Anatomy', blurb: 'Name every part of the symbol and what it is for.', ready: true },
     { n: 2, id: 'cover', title: 'Read the cover', blurb: 'Version, error correction, mask and rough size, read by eye.', ready: true },
     { n: 3, id: 'bits', title: 'Bits', blurb: 'Modes, the bit stream, zig-zag placement and masks.', ready: true },
     { n: 4, id: 'ecc', title: 'Error correction', blurb: 'Reed–Solomon blocks and how much damage a code survives.', ready: true },
-    { n: 5, id: 'wild', title: 'In the wild', blurb: 'What codes hold, where you meet them and what they do.', ready: false },
-    { n: 6, id: 'safe', title: 'Safety & mastery', blurb: 'Spot traps, decode by hand and read any code like a cover.', ready: false },
+    { n: 5, id: 'wild', title: 'In the wild', blurb: 'What codes hold, where you meet them and what they do.', ready: true },
+    { n: 6, id: 'safe', title: 'Safety & mastery', blurb: 'Spot traps, decode by hand and read any code like a cover.', ready: true },
   ];
 
   const SKILLS = [
@@ -39,6 +41,14 @@
     { id: 'ecc.levels', level: 4, label: 'Level percentages' },
     { id: 'ecc.blocks', level: 4, label: 'Blocks & interleaving' },
     { id: 'ecc.survive', level: 4, label: 'Will it still scan?' },
+    { id: 'wild.types', level: 5, label: 'What it will do' },
+    { id: 'wild.where', level: 5, label: 'Where you meet it' },
+    { id: 'wild.fields', level: 5, label: 'Reading the fields' },
+    { id: 'wild.dynamic', level: 5, label: 'Static and dynamic codes' },
+    { id: 'safe.verdict', level: 6, label: 'Safe to open?' },
+    { id: 'safe.owner', level: 6, label: 'Who owns the link' },
+    { id: 'safe.physical', level: 6, label: 'Traps in the real world' },
+    { id: 'safe.handdecode', level: 6, label: 'Decoding by hand' },
   ];
   const skill = id => SKILLS.find(s => s.id === id);
 
@@ -290,6 +300,132 @@
     },
   });
 
+  // ---- Level 5: payloads found in the wild ----------------------------------------------------
+  const ACTIONS = { wifi: 'Joins a Wi-Fi network', contact: 'Saves a contact', email: 'Drafts an email', sms: 'Drafts a text message', call: 'Starts a phone call', map: 'Opens a map', event: 'Adds a calendar event', otp: 'Adds a 2FA login code', pay: 'Starts a payment', web: 'Opens a website', app: 'Opens an app store page', text: 'Just shows a number or text' };
+  const WILD = [
+    { text: 'WIFI:T:WPA;S:Hotel Lumen Guest;P:welcome2026;;', act: 'wifi', where: 'A card in a hotel room or a router sticker' },
+    { text: 'BEGIN:VCARD\nVERSION:3.0\nFN:Ada Example\nORG:Example Studio\nTEL:+1 555 0100\nEMAIL:ada@studio.example\nEND:VCARD', act: 'contact', where: 'A business card or conference badge' },
+    { text: 'MECARD:N:Example,Sam;TEL:+44 20 7946 0000;EMAIL:sam@example.org;;', act: 'contact', where: 'A business card or conference badge' },
+    { text: 'mailto:returns@shop.example?subject=Return%20order%2048213', act: 'email', where: 'A returns slip in a parcel' },
+    { text: 'SMSTO:60123:VOTE 4', act: 'sms', where: 'A TV vote or competition poster' },
+    { text: 'tel:+15550100', act: 'call', where: 'The side of a delivery van or a shop window' },
+    { text: 'geo:48.8584,2.2945?q=Eiffel%20Tower', act: 'map', where: 'A tourist sign or venue directions' },
+    { text: 'BEGIN:VEVENT\nSUMMARY:Night Market\nDTSTART:20261121T180000\nLOCATION:Pier 3\nEND:VEVENT', act: 'event', where: 'An event poster or invitation' },
+    { text: 'otpauth://totp/Example:ada@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Example', act: 'otp', where: 'Your account’s security settings, turning on 2FA' },
+    { text: 'upi://pay?pa=chai.stall@bank&pn=Chai%20Stall&cu=INR', act: 'pay', where: 'A market stall counter in India' },
+    { text: 'BCD\n002\n1\nSCT\nBICXXXX\nPlumb & Co\nDE89370400440532013000\nEUR184.50\n\n\nInvoice 2026-117', act: 'pay', where: 'A printed invoice in Europe' },
+    { text: '4006381333931', act: 'text', where: 'Product packaging, next to the barcode' },
+    { text: 'https://id.gs1.org/01/09506000134352', act: 'web', where: 'Product packaging (the newer GS1 Digital Link)' },
+    { text: 'https://apps.apple.com/app/id1234567890', act: 'app', where: 'A poster advertising an app' },
+    { text: 'https://cafe-luna.example/menu?table=12', act: 'web', where: 'A café table' },
+  ];
+  const wildCode = text => ({ text, ec: 'M' });
+
+  Object.assign(GENERATORS, {
+    'wild.types': r => {
+      const w = pick(r, WILD);
+      return { skill: 'wild.types', prompt: 'What will your phone offer to do with this code?', payload: w.text, code: wildCode(w.text), highlight: [], choices: choicesWith(r, ACTIONS[w.act], Object.values(ACTIONS)), answer: ACTIONS[w.act], why: `${P.classify(w.text).label}: ${P.classify(w.text).action}. The first few characters (${JSON.stringify(w.text.slice(0, 8))}…) give it away.` };
+    },
+    'wild.where': r => {
+      const w = pick(r, WILD.filter(x => x.act !== 'web'));
+      const pool = [...new Set(WILD.map(x => x.where))];
+      return { skill: 'wild.where', prompt: 'Where are you most likely to meet this code?', payload: w.text, code: wildCode(w.text), highlight: [], choices: choicesWith(r, w.where, pool), answer: w.where, why: `${P.classify(w.text).label}: ${P.classify(w.text).action.toLowerCase()}. That is exactly what you’d want at ${w.where.charAt(0).toLowerCase() + w.where.slice(1)}.` };
+    },
+    'wild.fields': r => {
+      const kind = pick(r, ['wifi', 'pay', 'event']);
+      if (kind === 'wifi') {
+        const ssid = pick(r, ['Cafe Luna', 'Library Guest', 'Studio 5G', 'Harbour Hotel']), pw = pick(r, ['espresso-2026', 'books4all', 'pixels!42', 'seaview77']);
+        const text = P.build.wifi({ ssid, password: pw, auth: 'WPA' });
+        return { skill: 'wild.fields', prompt: 'What is the Wi-Fi password in this code?', payload: text, code: wildCode(text), highlight: [], choices: shuffle(r, [pw, ssid, 'WPA', 'nopass']), answer: pw, why: 'In WIFI: codes, S: is the network name, T: the security type and P: the password.' };
+      }
+      if (kind === 'pay') {
+        const amt = (5 + Math.floor(r() * 400)) + '.' + pick(r, ['00', '50', '99']);
+        const text = `upi://pay?pa=shop@bank&pn=Corner%20Shop&am=${amt}&cu=INR`;
+        return { skill: 'wild.fields', prompt: 'How much does this payment code ask for?', payload: text, code: wildCode(text), highlight: [], choices: shuffle(r, [amt, String(Math.round(+amt * 10)), '0.00', 'Nothing: it’s a receipt']), answer: amt, why: 'In a UPI link, pa= is the payee address, pn= the name and am= the amount. Your app should show the same before you confirm.' };
+      }
+      const day = 10 + Math.floor(r() * 18), hour = 9 + Math.floor(r() * 11);
+      const text = `BEGIN:VEVENT\nSUMMARY:Open Studio\nDTSTART:202611${day}T${String(hour).padStart(2, '0')}0000\nEND:VEVENT`;
+      const ans = `2026-11-${day} ${String(hour).padStart(2, '0')}:00`;
+      return { skill: 'wild.fields', prompt: 'When does this event start?', payload: text, code: wildCode(text), highlight: [], choices: shuffle(r, [ans, `2026-${day}-11 ${hour}:00`, `2026-11-${day} ${String(hour - 1).padStart(2, '0')}:00`, `2026-11-${day + 1} ${String(hour).padStart(2, '0')}:00`]), answer: ans, why: 'DTSTART is year, month, day, then T and hours-minutes-seconds: 20261121T180000 is 21 Nov 2026 at 18:00.' };
+    },
+    'wild.dynamic': r => {
+      const q = pick(r, [
+        { prompt: 'A café prints a code that points to qrco.de/b7Kx. What can the café change after printing?', answer: 'Where the code leads', pool: ['Where the code leads', 'Nothing', 'The code’s pattern', 'Its error-correction level'], why: 'A dynamic code points at a forwarding service. The printed pattern never changes, but its owner can change the destination any time.' },
+        { prompt: 'Why are codes from QR generator sites often small and simple-looking?', answer: 'They hold a short forwarding link, not the real address', pool: ['They hold a short forwarding link, not the real address', 'They use better compression', 'They are version 40', 'They skip error correction'], why: 'Short link → few bytes → small version. The real destination lives on their server.' },
+        { prompt: 'What’s a downside of a dynamic code for the person who prints it?', answer: 'It stops working if the service shuts down or the plan lapses', pool: ['It stops working if the service shuts down or the plan lapses', 'It can’t be scanned offline by any phone', 'It is always slower to print', 'It can’t hold a URL'], why: 'Everything depends on the forwarding service. Static codes work as long as the destination does.' },
+        { prompt: 'A code’s contents start with “https://bit.ly/”. What do you know about where it goes?', answer: 'Nothing yet: the shortener hides it', pool: ['Nothing yet: the shortener hides it', 'It goes to bit.ly’s homepage', 'It is definitely safe', 'It is definitely a scam'], why: 'Shorteners and dynamic services hide the real destination until you open them. Some offer a preview (add + to a bit.ly link).' },
+      ]);
+      return { skill: 'wild.dynamic', prompt: q.prompt, code: { text: 'https://qrco.de/b7Kx', ec: 'M' }, highlight: [], choices: shuffle(r, q.pool), answer: q.answer, why: q.why };
+    },
+  });
+
+  // ---- Level 6: safety and mastery --------------------------------------------------------------
+  const VERDICT = { fine: 'Looks fine', careful: 'Be careful', danger: 'Don’t open' };
+  const URLS = [
+    'https://www.wikipedia.org/wiki/QR_code', 'https://www.bbc.co.uk/news', 'https://cafe-luna.example/menu?table=12', 'https://login.microsoftonline.com/',
+    'https://bit.ly/3xQz9Lm', 'http://museum.example/tour', 'https://parking-pay-verify.com/zone4', 'https://tinyurl.com/park-pay-now',
+    'https://paypal.com.secure-login.example/', 'http://192.168.4.20/pay', 'https://apple.com@id-verify.example/', 'https://pаypal.com/', 'https://files.example/update.apk', 'https://amazon-refunds.example/claim',
+  ];
+  const PHYSICAL = [
+    { prompt: 'A parking meter’s QR code is on a sticker slightly askew over the printed one. What should you do?', answer: 'Pay with the meter, the app you already use, or the URL printed on the sign', pool: ['Pay with the meter, the app you already use, or the URL printed on the sign', 'Scan it: stickers are official updates', 'Scan it but use a credit card', 'Peel it off and scan the one beneath'], why: 'Fake stickers over real codes are the classic “quishing” trick at meters and EV chargers. Go to the operator another way.' },
+    { prompt: 'An email says your mailbox is full and shows a QR code to “verify” your account. Why a QR code?', answer: 'To move you to your phone, away from email link scanning', pool: ['To move you to your phone, away from email link scanning', 'Because QR codes are more secure', 'It’s a new standard for IT', 'To save you typing your password'], why: 'Email filters check links, not pictures of links. A QR code also moves you to a phone with fewer protections.' },
+    { prompt: 'A parcel you didn’t order arrives with a QR code “to see who sent it”. Best move?', answer: 'Don’t scan it; contact the courier or retailer directly', pool: ['Don’t scan it; contact the courier or retailer directly', 'Scan it to find the sender', 'Scan it, but only on Wi-Fi', 'Post it on social media'], why: 'Unexpected parcels with codes are a known lure. Use contact details you look up yourself.' },
+    { prompt: 'A restaurant table code opens a page asking for your card before showing the menu. What’s the red flag?', answer: 'A menu shouldn’t need payment details first', pool: ['A menu shouldn’t need payment details first', 'Restaurants never use QR codes', 'The page loaded too fast', 'Nothing: that’s normal'], why: 'Menus show the menu. Asking for a card first means the code may have been swapped. Check the address and ask staff.' },
+    { prompt: 'A stranger asks you to scan their code to “receive” money they owe you. What’s going on?', answer: 'Scanning a payment code sends money; it never receives it', pool: ['Scanning a payment code sends money; it never receives it', 'It’s a quick way to get paid', 'Only if the amount is small', 'It depends on your bank'], why: 'Payment QR codes request money from whoever scans. “Scan to receive” is a well-known scam.' },
+    { prompt: 'Is a QR code itself able to infect your phone?', answer: 'No: it’s only text; the risk is what that text makes you open', pool: ['No: it’s only text; the risk is what that text makes you open', 'Yes, the pattern can contain a virus', 'Only on Android', 'Only big codes can'], why: 'A code is just characters. Danger comes from the link, file, app, payment or login it leads you to.' },
+  ];
+
+  Object.assign(GENERATORS, {
+    'safe.verdict': r => {
+      const url = pick(r, URLS), c = P.classify(url);
+      const v = P.verdict(c);
+      return { skill: 'safe.verdict', prompt: 'Read it before you open it. Your call?', payload: url, code: wildCode(url), highlight: [], choices: [VERDICT.fine, VERDICT.careful, VERDICT.danger], answer: VERDICT[v], why: c.flags.length ? c.flags.map(f => f.msg).join(' ') : `A plain https link to ${P.registeredDomain(c.host)}, no tricks. Still check it’s the site you expect.` };
+    },
+    'safe.owner': r => {
+      const url = pick(r, ['https://paypal.com.secure-login.example/signin', 'https://www.bbc.co.uk/news', 'https://apple.com@id-verify.example/', 'https://login.microsoftonline.com/', 'https://accounts.google.com.session-check.example/', 'https://shop.example.co.uk/basket', 'https://m.facebook.com.free-gift.example/']);
+      const parts = P.urlParts(url);
+      const labels = parts.host.split('.');
+      const pool = new Set([parts.owner]);
+      for (let i = 0; i < labels.length - 1; i++) pool.add(labels.slice(i, i + 2).join('.'));
+      const ui = (url.match(/\/\/([^@/]+)@/) || [])[1];
+      if (ui) pool.add(ui);
+      pool.add(labels.slice(0, 2).join('.'));
+      return { skill: 'safe.owner', prompt: 'Which website does this really open?', payload: url, code: wildCode(url), highlight: [], choices: choicesWith(r, parts.owner, [...pool].filter(Boolean)), answer: parts.owner, why: `Read the host from the right: the registered name just before the ending is the owner, here ${parts.owner}. Anything before it is just a label they chose${ui ? ', and anything before “@” is ignored entirely' : ''}.` };
+    },
+    'safe.physical': r => {
+      const q = pick(r, PHYSICAL);
+      return { skill: 'safe.physical', prompt: q.prompt, code: { text: 'SCAN WITH CARE', ec: 'H' }, highlight: [], choices: shuffle(r, q.pool), answer: q.answer, why: q.why };
+    },
+    'safe.handdecode': r => {
+      const mode = pick(r, ['numeric', 'alnum', 'byte']);
+      const text = mode === 'numeric' ? String(100 + Math.floor(r() * 9e5)) : mode === 'alnum' ? pick(r, ['QR CODE', 'HELLO', 'BENCH 4', 'MENU']) : pick(r, ['hi!', 'menu', 'qr?']);
+      const code = { text, ec: 'L', version: 1, mode, mask: Math.floor(r() * 8) };
+      const e = Q.encode(text, code);
+      const cells = e.placement.slice(0, 4).map(i => [i % e.size, Math.floor(i / e.size)]);
+      const stored = cells.map(([x, y]) => e.modules[y * e.size + x]);
+      const flips = cells.map(([x, y]) => (Q.MASKS[e.mask](x, y) ? 1 : 0));
+      const bits = stored.map((b, i) => b ^ flips[i]);
+      return { skill: 'safe.handdecode', prompt: `Mask ${e.mask} (${Q.MASK_FORMULAS[e.mask]}). The highlighted 2×2 in the bottom-right corner holds the first four bits: bottom-right, bottom-left, then the row above. Undo the mask: which mode is it?`, code, highlight: cells, choices: ['Numeric', 'Alphanumeric', 'Byte', 'Kanji'], answer: MODE_NAMES[mode], why: `Cells (x,y) ${cells.map(c => `(${c})`).join(' ')} read ${stored.join('')}; the mask flips ${flips.join('')}; so the bits are ${bits.join('')}. 0001 numeric, 0010 alphanumeric, 0100 byte, 1000 kanji.` };
+    },
+  });
+
+  // A final exam: n questions spread across every ready level, harder levels weighted a little more
+  function examPlan(seed, n = 12) {
+    const r = rng(seed);
+    const ready = LEVELS.filter(l => l.ready).map(l => l.n);
+    const ids = [];
+    for (const lv of ready) ids.push(pick(r, SKILLS.filter(s => s.level === lv).map(s => s.id)));
+    const rest = shuffle(r, SKILLS.filter(s => ready.includes(s.level) && s.level >= 2).map(s => s.id));
+    for (const id of rest) { if (ids.length >= n) break; if (!ids.includes(id)) ids.push(id); }
+    return shuffle(r, ids).slice(0, n).map((id, i) => ({ id, seed: (seed * 31 + i * 7919) >>> 0 }));
+  }
+  const PASS = 0.8;
+  function recordExam(state, score, total, today) {
+    const prev = state.exam || { best: 0, attempts: 0, passed: null };
+    const pctScore = total ? score / total : 0;
+    return { ...state, exam: { best: Math.max(prev.best, pctScore), attempts: prev.attempts + 1, passed: prev.passed || (pctScore >= PASS ? today : null), last: today } };
+  }
+
   function anatomy(r, part, v) {
     const code = { text: samplePayload(r, Math.max(6, Math.floor(Q.capacity(v, 'M') * 0.8))), ec: 'M', version: v };
     const e = Q.encode(code.text, code);
@@ -331,7 +467,7 @@
     return { ...d, seed };
   }
 
-  const api = { LEVELS, SKILLS, INTERVALS, MASTERED, skill, empty, record, boxOf, mastery, levelSkills, levelProgress, isMastered, scaffold, isDue, dueSkills, nextSkill, streak, recommendedLevel, addDays, dayDiff, drill, cellsOf, rng, GENERATORS, WHY, PART };
+  const api = { examPlan, recordExam, PASS, WILD, ACTIONS, VERDICT, PHYSICAL, LEVELS, SKILLS, INTERVALS, MASTERED, skill, empty, record, boxOf, mastery, levelSkills, levelProgress, isMastered, scaffold, isDue, dueSkills, nextSkill, streak, recommendedLevel, addDays, dayDiff, drill, cellsOf, rng, GENERATORS, WHY, PART };
   root.Bench = root.Bench || {};
   root.Bench.qrlearn = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

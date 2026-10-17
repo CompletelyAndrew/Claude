@@ -17,6 +17,41 @@
 
   const flag = (level, code, msg) => ({ level, code, msg });
 
+  // The part of a host name someone actually registered: the last two labels,
+  // or three under common two-part endings like co.uk
+  const SECOND_LEVEL = /^(co|com|org|net|gov|ac|edu|ne|or|go)\.[a-z]{2}$/;
+  function registeredDomain(host) {
+    const labels = String(host || '').toLowerCase().replace(/^\[|\]$/g, '').split('.').filter(Boolean);
+    if (labels.length <= 2 || /^\d+$/.test(labels[labels.length - 1])) return labels.join('.');
+    const lastTwo = labels.slice(-2).join('.');
+    return SECOND_LEVEL.test(lastTwo) ? labels.slice(-3).join('.') : lastTwo;
+  }
+
+  // A URL split into the pieces a careful reader looks at
+  function urlParts(raw) {
+    const text = String(raw || '').trim();
+    let u;
+    try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(text) ? text : 'https://' + text); } catch (e) { return null; }
+    const m = text.match(/^([a-z][a-z0-9+.-]*:\/\/)?([^@/?#]*@)?([^/:?#]*)(:\d+)?([^?#]*)(\?[^#]*)?(#.*)?$/i);
+    if (!m) return null;
+    const host = m[3] || '';
+    const owner = registeredDomain(u.hostname);
+    const ownerAt = host.toLowerCase().lastIndexOf(owner.split('.')[0]) >= 0 && u.hostname === host.toLowerCase() ? host.length - owner.length : -1;
+    const parts = [];
+    if (m[1]) parts.push({ kind: 'scheme', text: m[1] });
+    if (m[2]) parts.push({ kind: 'userinfo', text: m[2] });
+    if (ownerAt > 0) parts.push({ kind: 'subdomain', text: host.slice(0, ownerAt) }, { kind: 'owner', text: host.slice(ownerAt) });
+    else parts.push({ kind: 'owner', text: host });
+    if (m[4]) parts.push({ kind: 'port', text: m[4] });
+    if (m[5]) parts.push({ kind: 'path', text: m[5] });
+    if (m[6]) parts.push({ kind: 'query', text: m[6] });
+    if (m[7]) parts.push({ kind: 'fragment', text: m[7] });
+    return { parts, owner, host: u.hostname, secure: u.protocol === 'https:' };
+  }
+
+  // One word for how careful to be: fine / careful / danger
+  const verdict = c => (c.flags.some(f => f.level === 'bad') ? 'danger' : c.flags.some(f => f.level === 'warn') ? 'careful' : 'fine');
+
   // ---- Field parsers --------------------------------------------------------------
   // MECARD / WIFI style: KEY:value;KEY:value;; with \ escapes
   function keyed(body) {
@@ -95,10 +130,12 @@
     if (RISKY_FILES.test(u.pathname)) flags.push(flag('bad', 'download', 'Downloads an app or program file directly. Install apps from your app store instead.'));
     if (NEW_TLDS.test(host)) flags.push(flag('info', 'tld', `The .${host.split('.').pop()} ending is cheap and popular with throwaway sites.`));
     const labels = bare.split('.');
-    const owner = labels.slice(-2).join('.');
-    const brandHit = BRANDS.find(b => bare.includes(b) && labels[labels.length - 2] !== b);
-    if (brandHit) flags.push(flag('warn', 'brand', `“${brandHit}” appears in the address, but the site that owns it is ${owner}.`));
-    else if (LURES.test(labels[labels.length - 2]) && labels[labels.length - 2].includes('-')) flags.push(flag('warn', 'lure', `${owner} is built from words like “login” or “verify”. Real services use their own name.`));
+    const owner = registeredDomain(host);
+    // A brand in front of someone else's domain (paypal.com.evil.example), or glued on with a hyphen (paypal-verify.com)
+    const ownerLabel = owner.split('.')[0], sub = bare.slice(0, Math.max(0, bare.length - owner.length));
+    const brandHit = BRANDS.find(b => (sub.includes(b) && !ownerLabel.includes(b)) || (ownerLabel.includes(b) && ownerLabel.includes('-')));
+    if (brandHit) flags.push(flag('bad', 'brand', `“${brandHit}” appears in the address, but the site that owns it is ${owner}. Classic impersonation.`));
+    else if (LURES.test(ownerLabel) && ownerLabel.includes('-')) flags.push(flag('warn', 'lure', `${owner} is built from words like “login” or “verify”. Real services use their own name.`));
     if (labels.length > 4) flags.push(flag('info', 'subdomains', 'Lots of subdomains. The part that matters is the last two.'));
     const params = query(u.search);
     const tracking = Object.keys(params).filter(k => TRACKING.test(k));
@@ -236,7 +273,7 @@
     geo: ({ lat, lng, label }) => `geo:${lat},${lng}${label ? `?q=${encodeURIComponent(label)}` : ''}`,
   };
 
-  const api = { classify, build, gtinValid, SHORTENERS, DYNAMIC };
+  const api = { classify, build, gtinValid, registeredDomain, urlParts, verdict, SHORTENERS, DYNAMIC };
   root.Bench = root.Bench || {};
   root.Bench.qrpayload = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

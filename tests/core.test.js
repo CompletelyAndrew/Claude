@@ -457,3 +457,36 @@ test('qrlearn: damage drills answer from a real decode', () => {
   assert.ok(qr.bitGroups(e).map(g => g.bits).join('').length === e.bits.capacity);
   assert.equal(qr.blockDamage(e, e.modules).every(b => b.errors === 0), true);
 });
+
+test('qrlearn: field-guide samples classify as they claim, and the exam covers every level', () => {
+  const typeFor = { wifi: ['wifi'], contact: ['vcard', 'mecard'], email: ['email'], sms: ['sms'], call: ['tel'], map: ['geo'], event: ['event'], otp: ['otp'], pay: ['upi', 'epc'], web: ['url'], app: ['url'], text: ['gtin'] };
+  for (const w of qrl.WILD) assert.ok(typeFor[w.act].includes(qrp.classify(w.text).type), `${w.text.slice(0, 20)} → ${qrp.classify(w.text).type}`);
+  const plan = qrl.examPlan(42);
+  assert.equal(plan.length, 12);
+  assert.equal(new Set(plan.map(q => q.id)).size, 12);
+  for (const lv of [1, 2, 3, 4, 5, 6]) assert.ok(plan.some(q => qrl.skill(q.id).level === lv), `level ${lv} missing`);
+  let s = qrl.recordExam(qrl.empty(), 9, 12, '2026-10-17');
+  assert.equal(s.exam.passed, null);
+  s = qrl.recordExam(s, 11, 12, '2026-10-18');
+  assert.equal(s.exam.passed, '2026-10-18');
+  assert.equal(qrl.record(s, 'safe.owner', true, '2026-10-18').exam.passed, '2026-10-18');
+});
+
+test('qrlearn: hand-decoding drill matches the real mode bits', () => {
+  for (let seed = 1; seed <= 30; seed++) {
+    const d = qrl.drill('safe.handdecode', seed), e = qr.encode(d.code.text, d.code);
+    const bits = e.placement.slice(0, 4).map(i => e.unmasked[i]).join('');
+    assert.equal({ '0001': 'Numeric', '0010': 'Alphanumeric', '0100': 'Byte' }[bits], d.answer);
+  }
+});
+
+test('qrpayload: registered domains and URL parts', () => {
+  assert.equal(qrp.registeredDomain('www.bbc.co.uk'), 'bbc.co.uk');
+  assert.equal(qrp.registeredDomain('paypal.com.secure-login.example'), 'secure-login.example');
+  assert.equal(qrp.registeredDomain('10.0.0.1'), '10.0.0.1');
+  const p = qrp.urlParts('https://apple.com@id-verify.example/x?y=1');
+  assert.deepEqual(p.parts.map(x => x.kind), ['scheme', 'userinfo', 'owner', 'path', 'query']);
+  assert.equal(p.owner, 'id-verify.example');
+  assert.equal(qrp.verdict(qrp.classify('https://login.microsoftonline.com/')), 'fine');
+  assert.equal(qrp.verdict(qrp.classify('https://paypal-verify.com/')), 'danger');
+});

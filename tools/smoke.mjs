@@ -138,11 +138,36 @@ for (const [label, viewport, scheme] of [['desktop-light', { width: 1360, height
     await page.locator('#qr-ecc-blob').click();
     await page.locator('#qr-rs-0').click();
     if (!(await page.locator('.qr-rs + .row .chip.good').count())) fail('QR Reed–Solomon demo should repair one byte'); else ok('QR lessons 2–4 render and repair');
+    // Levels 5 and 6, hand decoding, and a full exam
+    await page.locator('#qr-level-5').click();
+    await page.locator('#qr-guide-money').click();
+    await page.screenshot({ path: join(shots, 'qr-level-5.png'), fullPage: true });
+    await page.locator('#qr-level-6').click();
+    for (let i = 0; i < 3; i++) await page.locator('#qr-hand-next').click();
+    const handText = await page.locator('#qr-hand-next').evaluate(b => b.closest('.stack').textContent);
+    if (!/= \d+ digits follow/.test(handText)) fail('QR hand-decode should reach the count step: ' + handText); else ok('QR hand-decode walks the bits');
+    const answer = await page.evaluate(() => { const qrs = [...document.querySelectorAll('.qr-plate svg')]; return qrs.length; });
+    if (!answer) fail('QR level 6 rendered no codes');
+    await page.screenshot({ path: join(shots, 'qr-level-6.png'), fullPage: true });
+    await page.locator('#qr-level-exam').click();
+    for (let i = 0; i < 12; i++) { await page.locator('#qr-choice-0').click(); await page.locator('#qr-next').click(); }
+    const exam = await page.evaluate(() => Bench.store.get('qr').exam);
+    if (!exam || exam.attempts !== 1) fail('QR exam was not recorded'); else ok(`QR exam scored and recorded (${Math.round(exam.best * 100)}%)`);
+    // Quiz-me mode: Inspect asks before it tells, and the answer counts as practice
+    await page.evaluate(() => Bench.store.set('qr:ui', { ...Bench.store.get('qr:ui', {}), explain: 'predict' }));
+    await page.getByRole('tab', { name: 'Inspect' }).click();
+    const before = await page.evaluate(() => Bench.store.get('qr').log.length);
+    await page.locator('#qr-gate-1').click();
+    const after = await page.evaluate(() => Bench.store.get('qr').log.length);
+    if (after !== before + 1) fail('QR Inspect gate should record a practice answer'); else ok('QR tools quiz you in predict mode');
+    await page.evaluate(() => Bench.store.set('qr:ui', { ...Bench.store.get('qr:ui', {}), explain: 'auto' }));
+    await page.getByRole('tab', { name: 'Learn' }).click();
     await page.locator('#qr-level-1').click();
     await page.getByRole('tab', { name: 'Learn' }).click();
+    const logBefore = await page.evaluate(() => (Bench.store.get('qr') || { log: [] }).log.length);
     await page.locator('#qr-choice-0').click();
     const answered = await page.evaluate(() => (Bench.store.get('qr') || { log: [] }).log.length);
-    if (answered !== 1) fail('QR drill answer was not recorded'); else ok('QR drill records an answer');
+    if (answered !== logBefore + 1) fail('QR drill answer was not recorded'); else ok('QR drill records an answer');
     await page.locator('#qr-break').click();
     await page.locator('#qr-break-ec-H').click();
     await page.locator('#qr-logo').click();

@@ -82,42 +82,75 @@
   ];
 
   // ---------------------------------------------------------------- drills
-  function drillPanel({ pool, title = 'Practice', onAnswer }) {
-    const body = h('div.sheet-body.stack');
+  // One question card. Records the answer unless record is false; calls done(ok) after.
+  function question(d, { done, record = true, nextLabel = 'Next' } = {}) {
+    const id = d.skill;
+    const e = d.maskOnly != null ? Q.maskPattern(2, d.maskOnly) : Q.encode(d.code.text, d.code);
+    const feedback = h('div', { 'aria-live': 'polite' });
+    let answered = false;
+    const buttons = d.choices.map((c, i) => h('button.btn.qr-choice', { type: 'button', id: `qr-choice-${i}`, onclick: () => answer(c) }, c));
+    function answer(c) {
+      if (answered) return;
+      answered = true;
+      const ok = c === d.answer;
+      if (record) store.set('qr', L.record(progress(), id, ok, today()));
+      buttons.forEach(b => { b.disabled = true; if (b.textContent === d.answer) b.classList.add('right'); else if (b.textContent === c) b.classList.add('wrong'); });
+      const box = L.boxOf(progress(), id);
+      fill(feedback, h('div.stack', null,
+        h('div.row', null, h('span', { class: `chip ${ok ? 'good' : 'bad'}` }, ok ? icon('check') : icon('x'), ok ? 'Right' : `It was “${d.answer}”`),
+          h('span.faint.mono', { style: { fontSize: 'var(--t-xs)' }, title: 'Review box' }, `${L.skill(id).label} ${boxDots(box)}`)),
+        h('p.muted', null, d.why),
+        done ? h('div.row', null, h('button.btn.primary', { type: 'button', id: 'qr-next', onclick: () => done(ok) }, nextLabel, icon('arrow'))) : null));
+      const nb = feedback.querySelector('button');
+      if (nb) nb.focus();
+    }
+    return h('div.stack', null,
+      h('div.eyebrow', null, L.skill(id).label),
+      h('p', { style: { fontWeight: 600 } }, d.prompt),
+      d.payload ? h('pre.qr-payload', null, d.payload) : null,
+      plate(e, { highlight: d.highlight, markQuiet: id === 'anatomy.quiet', max: d.payload ? '200px' : '300px', label: d.maskOnly != null ? 'Mask pattern' : 'Drill code' }),
+      h('div.qr-choices', null, buttons), feedback);
+  }
+
+  function drillPanel({ pool, title = 'Practice' }) {
+    const body = h('div.sheet-body');
     const sheet = h('section.sheet', null, h('div.sheet-head', null, h('h2', null, title), h('span.faint', { style: { fontSize: 'var(--t-xs)' } }, 'Answers move skills between review boxes')), body);
     let count = 0;
     function next() {
-      const p = progress();
       const ids = pool();
-      const id = L.nextSkill(p, today(), ids) || ids[Math.floor(Math.random() * ids.length)];
-      const d = L.drill(id, (Date.now() + count++ * 7919) >>> 0);
-      const e = d.maskOnly != null ? Q.maskPattern(2, d.maskOnly) : Q.encode(d.code.text, d.code);
-      const feedback = h('div', { 'aria-live': 'polite' });
-      let answered = false;
-      const buttons = d.choices.map((c, i) => h('button.btn.qr-choice', { type: 'button', id: `qr-choice-${i}`, onclick: () => answer(c) }, c));
-      function answer(c) {
-        if (answered) return;
-        answered = true;
-        const ok = c === d.answer;
-        store.set('qr', L.record(progress(), id, ok, today()));
-        buttons.forEach(b => { b.disabled = true; if (b.textContent === d.answer) b.classList.add('right'); else if (b.textContent === c) b.classList.add('wrong'); });
-        const box = L.boxOf(progress(), id);
-        fill(feedback, h('div.stack', null,
-          h('div.row', null, h('span', { class: `chip ${ok ? 'good' : 'bad'}` }, ok ? icon('check') : icon('x'), ok ? 'Right' : `It was “${d.answer}”`),
-            h('span.faint.mono', { style: { fontSize: 'var(--t-xs)' }, title: 'Review box' }, `${L.skill(id).label} ${boxDots(box)}`)),
-          h('p.muted', null, d.why),
-          h('div.row', null, h('button.btn.primary', { type: 'button', id: 'qr-next', onclick: next }, 'Next', icon('arrow')))));
-        if (onAnswer) onAnswer(ok);
-        feedback.querySelector('button').focus();
-      }
-      fill(body, 
-        h('div.eyebrow', null, L.skill(id).label),
-        h('p', { style: { fontWeight: 600 } }, d.prompt),
-        plate(e, { highlight: d.highlight, markQuiet: id === 'anatomy.quiet', max: '300px', label: d.maskOnly != null ? 'Mask pattern' : 'Drill code' }),
-        h('div.qr-choices', null, buttons), feedback);
+      const id = L.nextSkill(progress(), today(), ids) || ids[Math.floor(Math.random() * ids.length)];
+      fill(body, question(L.drill(id, (Date.now() + count++ * 7919) >>> 0), { done: next }));
     }
     next();
     return sheet;
+  }
+
+  // The final exam: twelve questions from every level, scored at the end
+  function examView(go) {
+    const body = h('div.sheet-body.stack');
+    const plan = L.examPlan((Date.now() >>> 0) % 1e9);
+    let i = 0, score = 0;
+    const misses = [];
+    function step() {
+      if (i >= plan.length) return finish();
+      const q = plan[i], d = L.drill(q.id, q.seed);
+      fill(body, h('div.row', null, h('span.chip.mono', null, `${i + 1} / ${plan.length}`), h('div.qr-bar.grow', { 'aria-hidden': 'true' }, h('i', { style: { width: pct(i / plan.length) } }))),
+        question(d, { nextLabel: i + 1 < plan.length ? 'Next question' : 'See my score', done: ok => { if (ok) score++; else misses.push(q.id); i++; step(); } }));
+    }
+    function finish() {
+      const before = progress().exam;
+      store.set('qr', L.recordExam(progress(), score, plan.length, today()));
+      const passed = score / plan.length >= L.PASS;
+      fill(body,
+        h('div.qr-score', null, h('div.v', null, `${score}/${plan.length}`), h('div', null, h('h3', null, passed ? 'You can read a QR code like a book cover.' : score / plan.length >= 0.6 ? 'Not yet. Close, though.' : 'Not yet. Keep working through the levels.'),
+          h('p.muted', null, passed ? (before && before.passed ? 'Passed again. The tools stay in facts-only mode unless you change it.' : 'Passed. From here the tools show you the facts and leave the reading to you.') : `You need ${Math.ceil(L.PASS * plan.length)} to pass. The skills you missed are now due for review.`))),
+        misses.length ? h('div.row', null, h('span.faint', { style: { fontSize: 'var(--t-sm)' } }, 'To practise:'), [...new Set(misses)].map(id => h('span.chip', null, L.skill(id).label))) : null,
+        h('div.row', null,
+          h('button.btn.primary', { type: 'button', id: 'qr-exam-again', onclick: () => go('learn', { level: 'exam' }) }, icon('reset'), 'Another exam'),
+          h('button.btn', { type: 'button', id: 'qr-exam-path', onclick: () => go('path') }, 'Back to the path')));
+    }
+    step();
+    return [h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Final exam · Read it like a book'), h('span.faint', { style: { fontSize: 'var(--t-xs)' } }, `Pass with ${Math.round(L.PASS * 100)}%`)), body)];
   }
 
   // ---------------------------------------------------------------- Path
@@ -156,8 +189,15 @@
           h('button.btn.sm.ghost', { type: 'button', id: 'qr-restore', onclick: () => restore(() => go('path')) }, icon('upload'), 'Restore')),
         h('p.faint', { style: { fontSize: 'var(--t-xs)' } }, 'Progress is kept in this browser. Back it up to move between Bench and the stand-alone QR app, or to another device.')));
 
+    const ex = p.exam;
+    const examCard = h('section.sheet', null,
+      h('div.sheet-head', null, h('h2', null, 'Final exam'), ex && ex.passed ? h('span.chip.mark', null, icon('check'), 'Reader') : null),
+      h('div.sheet-body.stack', null,
+        h('p.muted', null, 'Twelve questions from all six levels: name the parts, read the cover, the bits, the damage, where it leads and whether to open it. Pass with 80%.'),
+        ex ? h('div.faint', { style: { fontSize: 'var(--t-sm)' } }, `Best ${pct(ex.best)} over ${ex.attempts} attempt${ex.attempts > 1 ? 's' : ''}${ex.passed ? ` · passed ${ex.passed}` : ''}`) : null,
+        h('div.row', null, h('button', { class: `btn ${rec === 6 && L.levelProgress(p, 6) >= 0.5 ? 'primary' : ''}`, type: 'button', id: 'qr-exam', onclick: () => go('learn', { level: 'exam' }) }, ex ? 'Take it again' : 'Take the exam', icon('arrow')))));
     const review = due ? h('section.sheet', null, h('div.sheet-body.row', null, h('b', null, `${due} skill${due > 1 ? 's' : ''} due for review`), h('span.spacer'), h('button.btn.primary', { type: 'button', id: 'qr-review', onclick: () => go('learn', { level: 'review' }) }, 'Review now'))) : null;
-    return [stats, review, h('div.qr-path', null, route, dial)];
+    return [stats, review, h('div.qr-path', null, route, h('div.stack', { style: { gap: '18px' } }, dial, examCard))];
   }
   const SLICES = ['qr', 'qr:ui', 'qr:make', 'qr:scans'];
   function backup() {
@@ -192,9 +232,11 @@
     const lv = ui().level;
     const levelSeg = h('div.seg', { role: 'group', 'aria-label': 'Lesson' },
       L.LEVELS.filter(l => l.ready).map(l => h('button', { type: 'button', id: `qr-level-${l.n}`, 'aria-pressed': String(lv === l.n), onclick: () => go('learn', { level: l.n }) }, `${l.n} · ${l.title}`)),
-      h('button', { type: 'button', id: 'qr-level-review', 'aria-pressed': String(lv === 'review'), onclick: () => go('learn', { level: 'review' }) }, 'Review'));
+      h('button', { type: 'button', id: 'qr-level-review', 'aria-pressed': String(lv === 'review'), onclick: () => go('learn', { level: 'review' }) }, 'Review'),
+      h('button', { type: 'button', id: 'qr-level-exam', 'aria-pressed': String(lv === 'exam'), onclick: () => go('learn', { level: 'exam' }) }, 'Exam'));
     if (lv === 'review') return [levelSeg, drillPanel({ title: 'Review', pool: readySkills })];
-    const lesson = { 1: anatomyLesson, 2: coverLesson, 3: bitsLesson, 4: eccLesson }[lv] || anatomyLesson;
+    if (lv === 'exam') return [levelSeg, ...examView(go)];
+    const lesson = { 1: anatomyLesson, 2: coverLesson, 3: bitsLesson, 4: eccLesson, 5: wildLesson, 6: () => safeLesson(go) }[lv] || anatomyLesson;
     return [levelSeg, ...lesson(), drillPanel({ title: `Practice · Level ${lv}`, pool: () => L.levelSkills(lv) })];
   }
 
@@ -526,6 +568,182 @@
         h('p', null, 'These are block 1’s bytes: data, then check bytes (highlighted). Tap bytes to corrupt them. Reed–Solomon treats the bytes as a polynomial and the check bytes make it divisible by a known one, so any change leaves a remainder that pinpoints which bytes are wrong and by how much, up to half the number of check bytes.'), rsView))];
   }
 
+  // Level 5: what codes hold, where you meet them, and what a phone does with them
+  const TIPS = {
+    wifi: 'Check the network name matches the place you’re in. An open network lets others see your traffic.',
+    contact: 'Nothing is saved until you tap Save. Check the name and number first.',
+    email: 'It only drafts the email; you still press Send.',
+    sms: 'It only drafts the text. Short numbers can sign you up to paid services.',
+    call: 'Your phone shows the number before dialling. Check it.',
+    map: 'It’s just coordinates. Check the place name before you set off.',
+    event: 'Check the date, time and time zone before you add it.',
+    otp: 'Only scan one when you started 2FA setup yourself, on the real site.',
+    pay: 'Scanning a payment code sends money. Check payee and amount.',
+    web: 'Read the domain before you open it (Level 6).',
+    app: 'Check it’s the official store and the right developer.',
+    text: 'Just a number or text. Your phone may offer a web search.',
+  };
+  const GROUPS = [['all', 'All'], ['connect', 'Connect'], ['plan', 'Places & time'], ['money', 'Money'], ['web', 'Web & apps'], ['security', 'Security']];
+  const GROUP_OF = { wifi: 'connect', contact: 'connect', email: 'connect', sms: 'connect', call: 'connect', map: 'plan', event: 'plan', pay: 'money', web: 'web', app: 'web', text: 'web', otp: 'security' };
+
+  function wildLesson() {
+    let group = 'all';
+    const guide = h('div.qr-guide'), seg = h('div.seg', { role: 'group', 'aria-label': 'Filter' });
+    const paintGuide = () => {
+      fill(seg, GROUPS.map(([id, label]) => h('button', { type: 'button', id: `qr-guide-${id}`, 'aria-pressed': String(group === id), onclick: () => { group = id; paintGuide(); } }, label)));
+      fill(guide, L.WILD.filter(w => group === 'all' || GROUP_OF[w.act] === group).map(w => {
+        const c = P.classify(w.text), e = Q.encode(w.text, { ec: 'M' });
+        return h('article.qr-card', null,
+          plate(e, { label: c.label, quiet: 2 }),
+          h('div.stack', { style: { gap: '6px', minWidth: 0 } },
+            h('div.row', null, h('b', null, c.label), h('span.chip', null, L.ACTIONS[w.act])),
+            h('div.faint', { style: { fontSize: 'var(--t-xs)' } }, w.where),
+            h('code.qr-snippet', null, w.text.length > 64 ? w.text.slice(0, 64) + '…' : w.text),
+            h('p', { style: { fontSize: 'var(--t-sm)' } }, TIPS[w.act]),
+            h('div', null, h('button.btn.sm.ghost', { type: 'button', onclick: () => { setUi({ inspect: w.text, tab: 'inspect' }); Bench.navigate('qr'); } }, 'Inspect', icon('arrow')))));
+      }));
+    };
+    paintGuide();
+
+    const staticText = 'https://cafe-luna.example/menus/autumn-2026/dinner?table=12&lang=en';
+    const dynText = 'https://qrco.de/b7Kx';
+    const pair = [[staticText, 'Static', 'The whole address is in the pattern. Nothing can change it, and it works as long as the site does.'], [dynText, 'Dynamic', 'A short link to a forwarding service. The owner can change the destination after printing, and can count scans. If the service lapses, the code dies.']];
+
+    const others = [
+      ['Data Matrix', 'Small square with an L-shaped solid edge', 'Medicine packs, electronics parts, postage'],
+      ['Aztec', 'A single bullseye in the centre', 'Boarding passes, train tickets'],
+      ['PDF417', 'A wide stack of barcode-like rows', 'Driving licences, IDs, some boarding passes'],
+      ['Micro QR', 'One finder square only', 'Tiny parts, where space is tight'],
+      ['rMQR', 'A long thin rectangle with finders at both ends', 'Narrow labels and edges'],
+    ];
+    return [
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '1 · Field guide'), h('div.actions', null, seg)), h('div.sheet-body.stack', null,
+        h('p', null, 'A code is just text. What your phone does depends on how that text starts: https:// opens a browser, WIFI: offers to join, BEGIN:VCARD offers to save a contact, upi:// or BCD opens a payment. Learn the openings and you know what a code does before it does it.'), guide)),
+      h('div.grid.qr-lesson', null, pair.map(([t, name, why]) => {
+        const e = Q.encode(t, { ec: 'M' });
+        return h('section.sheet', null, h('div.sheet-head', null, h('h2', null, `2 · ${name}`), h('span.chip.mono', null, `v${e.version} · ${e.size}×${e.size}`)), h('div.sheet-body.stack', null,
+          plate(e, { max: '200px', label: `${name} code` }), h('code.qr-snippet', null, t), h('p', null, why)));
+      })),
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '3 · Not every square code is QR')), h('div.sheet-body', null,
+        h('table.qr-table', null, h('thead', null, h('tr', null, h('th', null, 'Symbol'), h('th', null, 'How to spot it'), h('th', null, 'Where you meet it'))),
+          h('tbody', null, others.map(([n, look, where]) => h('tr', null, h('td', null, h('b', null, n)), h('td', null, look), h('td', null, where))))),
+        h('p.faint', { style: { fontSize: 'var(--t-xs)', marginTop: '10px' } }, 'Three finder squares in three corners means QR. Everything in this course applies to those.')))];
+  }
+
+  // Level 6: read links like an expert, spot traps, and decode a code with your own eyes
+  function safeLesson(go) {
+    const urlIn = h('input.input.mono', { id: 'qr-url', value: 'https://paypal.com.secure-login.example/signin?ref=qr', spellcheck: 'false', 'aria-label': 'Link to read' });
+    const urlOut = h('div.stack');
+    const paintUrl = () => {
+      const parts = P.urlParts(urlIn.value);
+      if (!parts) { fill(urlOut, h('p.faint', null, 'That doesn’t parse as a link.')); return; }
+      const c = P.classify(urlIn.value), v = P.verdict(c);
+      const names = { scheme: 'scheme', userinfo: 'ignored', subdomain: 'their label', owner: 'the real site', port: 'port', path: 'page', query: 'details', fragment: 'anchor' };
+      fill(urlOut,
+        h('div.qr-url', null, parts.parts.map(pt => h('span', { class: `qr-url-${pt.kind}` }, h('code', null, pt.text), h('small', null, names[pt.kind])))),
+        h('div.row', null, h('span', { class: `chip ${v === 'fine' ? 'good' : v === 'careful' ? 'warn' : 'bad'}` }, L.VERDICT[v]), h('span', null, 'This opens ', h('b', null, parts.owner), parts.secure ? '' : ', unencrypted', '.')),
+        c.flags.length ? h('ul.list.qr-flags', null, c.flags.map(f => h('li', null, h('span', { class: `chip ${f.level === 'info' ? 'blue' : f.level}` }, f.level === 'info' ? 'Note' : f.level === 'warn' ? 'Careful' : 'Danger'), h('span.grow', null, f.msg)))) : null);
+    };
+    urlIn.addEventListener('input', Bench.debounce(paintUrl, 150));
+    paintUrl();
+    const urlSamples = h('div.row.qr-examples', null, [['Lookalike', 'https://pаypal.com/'], ['@ trick', 'https://apple.com@id-verify.example/'], ['Real', 'https://www.bbc.co.uk/news'], ['Shortened', 'https://bit.ly/3xQz9Lm'], ['Raw IP', 'http://192.168.4.20/pay']].map(([n, u], i) =>
+      h('button.chip', { type: 'button', id: `qr-url-sample-${i}`, onclick: () => { urlIn.value = u; paintUrl(); } }, n)));
+
+    return [
+      h('div.grid.qr-lesson', null,
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '1 · Read before you open')), h('div.sheet-body', null,
+          h('ol.qr-steps', null,
+            h('li', null, h('b', null, 'What is it?'), ' Link, Wi-Fi, contact, payment, login? The first characters tell you.'),
+            h('li', null, h('b', null, 'Where does it go?'), ' Find the real site: the name just before the ending (.com, .co.uk). Ignore everything left of it and anything before an @.'),
+            h('li', null, h('b', null, 'Does it fit the place?'), ' A menu should open a menu. A parking sign shouldn’t open a download.'),
+            h('li', null, h('b', null, 'Has it been tampered with?'), ' Stickers over printed codes, codes in unexpected emails or parcels.'),
+            h('li', null, h('b', null, 'Never type secrets after a scan.'), ' If it asks you to log in or pay, go to the site or app yourself instead.')))),
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '2 · Anatomy of a link')), h('div.sheet-body.stack', null, urlIn, urlSamples, urlOut))),
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '3 · Traps in the real world')), h('div.sheet-body.qr-traps', null,
+        L.PHYSICAL.map((q, i) => h('details', { id: `qr-trap-${i}` }, h('summary', null, q.prompt), h('p', null, h('b', null, q.answer), '. ', q.why))))),
+      ...handDecode()];
+  }
+
+  // Decode a version 1 numeric code one step at a time, then try one alone
+  function handDecode() {
+    let text, e, step = 0;
+    const view = h('div.qr-stage'), side = h('div.stack');
+    const bitsAt = (from, n) => e.placement.slice(from, from + n);
+    const val = idxs => idxs.reduce((a, i) => (a << 1) | e.unmasked[i], 0);
+    const cellsOf = idxs => idxs.map(i => [i % e.size, Math.floor(i / e.size)]);
+    function newCode() {
+      text = String(Math.floor(10 ** (2 + Math.random() * 3)));
+      e = Q.encode(text, { ec: 'L', version: 1, mode: 'numeric' });
+      step = 0;
+    }
+    function steps() {
+      const out = [];
+      const fb = [14, 13, 12, 11, 10].map(i => (e.format >>> i) & 1);
+      out.push({ title: 'Read the format strip', cells: [[0, 8], [1, 8], [2, 8], [3, 8], [4, 8]], masked: true, text: `The modules read ${fb.join(' ')}. XOR with 1 0 1 0 1 gives ${fb.map((b, i) => b ^ [1, 0, 1, 0, 1][i]).join(' ')}: level ${e.ec}, mask ${e.mask} (${Q.MASK_FORMULAS[e.mask]}).` });
+      out.push({ title: 'Undo the mask', cells: [], masked: false, text: `Flip every data module where ${Q.MASK_FORMULAS[e.mask]}. Now the modules are the raw bits.` });
+      out.push({ title: 'Mode: 4 bits', idx: bitsAt(0, 4), text: idx => `Start bottom-right; read right then left, moving up. ${idx.map(i => e.unmasked[i]).join('')} = numeric mode.` });
+      out.push({ title: 'Count: 10 bits', idx: bitsAt(4, 10), text: idx => `${idx.map(i => e.unmasked[i]).join('')} = ${val(idx)} digits follow.` });
+      let pos = 14, read = '';
+      for (let i = 0; i < text.length; i += 3) {
+        const g = text.slice(i, i + 3), n = g.length * 3 + 1, idx = bitsAt(pos, n);
+        pos += n; read += g;
+        const soFar = read;
+        out.push({ title: `Digits: ${n} bits`, idx, text: ix => `${ix.map(j => e.unmasked[j]).join('')} = ${String(val(ix)).padStart(g.length, '0')}. So far: ${soFar}.` });
+      }
+      out.push({ title: 'Done', idx: bitsAt(pos, 4), text: () => `Then 0000, the terminator, and padding. The code says “${text}”.` });
+      return out;
+    }
+    function paint() {
+      const all = steps(), st = all[step];
+      const shown = st.masked ? e : { ...e, modules: maskedOff() };
+      const cells = st.cells || cellsOf(st.idx || []);
+      fill(view, plate(shown, { highlight: cells, max: '300px', label: st.masked ? 'Masked code' : 'Unmasked bits' }));
+      fill(side,
+        h('div.row', null, h('span.chip.mono', null, `${step + 1} / ${all.length}`), h('b', null, st.title)),
+        h('p', null, typeof st.text === 'function' ? st.text(st.idx) : st.text),
+        h('div.row', null,
+          h('button.btn.sm', { type: 'button', id: 'qr-hand-back', disabled: step === 0, onclick: () => { step--; paint(); } }, 'Back'),
+          h('button.btn.sm.primary', { type: 'button', id: 'qr-hand-next', disabled: step === all.length - 1, onclick: () => { step++; paint(); } }, 'Next', icon('arrow')),
+          h('button.btn.sm.ghost', { type: 'button', id: 'qr-hand-new', onclick: () => { newCode(); paint(); } }, icon('dice'), 'Another code')));
+    }
+    // The data area without the mask, function patterns as printed
+    function maskedOff() {
+      const m = e.modules.slice();
+      for (let y = 0; y < e.size; y++) for (let x = 0; x < e.size; x++) { const i = y * e.size + x; if (e.codeword[i] >= 0 || e.role[i] === Q.ROLE.remainder) m[i] = e.unmasked[i]; }
+      return m;
+    }
+    newCode(); paint();
+
+    // Your turn
+    let t2, e2, hint = false;
+    const tryView = h('div.qr-stage'), tryOut = h('div', { 'aria-live': 'polite' });
+    const tryIn = h('input.input.mono', { id: 'qr-hand-answer', inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'The number in the code', placeholder: 'Digits' });
+    function newTry() { t2 = String(Math.floor(10 + Math.random() * 990)); e2 = Q.encode(t2, { ec: 'L', version: 1, mode: 'numeric' }); hint = false; tryIn.value = ''; fill(tryOut); paintTry(); }
+    function paintTry() {
+      fill(tryView, plate(e2, { max: '260px', label: 'Code to decode by hand', highlight: hint ? e2.placement.slice(0, 14 + Math.ceil(t2.length / 3) * 10).map(i => [i % e2.size, Math.floor(i / e2.size)]) : [] }));
+    }
+    function check() {
+      const ok = tryIn.value.trim() === t2;
+      store.set('qr', L.record(progress(), 'safe.handdecode', ok, today()));
+      fill(tryOut, h('span', { class: `chip ${ok ? 'good' : 'bad'}` }, ok ? icon('check') : icon('x'), ok ? 'Read by hand. Nicely done.' : `It holds ${t2}`));
+    }
+    tryIn.addEventListener('keydown', ev => { if (ev.key === 'Enter') check(); });
+    newTry();
+    return [
+      h('div.grid.qr-lesson', null,
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '4 · Decode one by hand')), h('div.sheet-body.stack', null, view)),
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Step by step')), h('div.sheet-body.stack', null,
+          h('p.muted', null, 'A version 1 code holding a few digits, read exactly the way a scanner does. Everything you’ve learnt in levels 1–4 in one go.'), side))),
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Your turn')), h('div.sheet-body.qr-try', null, tryView,
+        h('div.stack', null,
+          h('p', null, `This version 1 code, level L, holds a number. Read its format strip, undo the mask, and follow the zig-zag. What number is it?`),
+          h('div.row', { style: { flexWrap: 'nowrap' } }, tryIn, h('button.btn.primary', { type: 'button', id: 'qr-hand-check', onclick: check }, 'Check')),
+          tryOut,
+          h('div.row', null,
+            h('button.btn.sm.ghost', { type: 'button', id: 'qr-hand-hint', onclick: () => { hint = !hint; paintTry(); } }, 'Highlight the bits to read'),
+            h('button.btn.sm.ghost', { type: 'button', id: 'qr-hand-try', onclick: newTry }, icon('dice'), 'Another one')))))];
+  }
+
   // ---------------------------------------------------------------- Scan
   function scanTab(go) {
     const canvas = h('canvas.qr-photo', { 'aria-label': 'Camera or photo' });
@@ -664,7 +882,7 @@
         h('div.grid.qr-lesson', null,
           h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'How it was read')), h('div.sheet-body.stack', null,
             plate(clean, { max: '220px', label: 'The grid the scanner sampled' }), how)),
-          h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Where it leads')), h('div.sheet-body.stack', null, leadsTo(c),
+          h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Where it leads')), h('div.sheet-body.stack', null, gatedLeadsTo(c, res.text),
             h('div.row', null,
               isLink ? h('a', { class: `btn ${risky ? 'danger' : 'primary'}`, id: 'qr-open-link', href: c.href, target: '_blank', rel: 'noopener noreferrer' }, risky ? 'Open anyway' : 'Open link', icon('arrow')) : null,
               h('button.btn', { type: 'button', id: 'qr-scan-copy', onclick: () => Bench.copy(res.text, 'Contents copied') }, icon('copy'), 'Copy'),
@@ -716,7 +934,7 @@
       let e;
       try { e = Q.encode(text || ' ', { ec: 'M' }); } catch (err) { fill(left, h('div.empty', null, h('b', null, 'Too long'), err.message)); fill(right); return; }
       fill(left, plate(e, { max: '320px', label: 'Inspected code' }), coverReading(e, p));
-      fill(right, leadsTo(P.classify(text)));
+      fill(right, gatedLeadsTo(P.classify(text), text));
     };
     input.addEventListener('input', Bench.debounce(paint, 200));
     paint();
@@ -751,7 +969,40 @@
     }));
   }
 
-  function leadsTo(c) {
+  // In "quiz me" mode the tools ask before they tell: safe to open, or what will it do?
+  // The answer counts as practice, so using the tool keeps teaching.
+  const ACT_OF = { wifi: 'wifi', vcard: 'contact', mecard: 'contact', email: 'email', sms: 'sms', tel: 'call', geo: 'map', event: 'event', otp: 'otp', upi: 'pay', epc: 'pay', swiss: 'pay', crypto: 'pay', gtin: 'text', text: 'text', json: 'text' };
+  const judged = new Set();
+  function gatedLeadsTo(c, raw) {
+    const mode = L.scaffold(progress(), ['safe.verdict', 'wild.types'], ui().explain);
+    const isUrl = c.type === 'url';
+    const act = isUrl ? (c.kind === 'app-store' ? 'app' : 'web') : ACT_OF[c.type];
+    if (mode !== 'predict' || judged.has(raw) || (!isUrl && !act)) return leadsTo(c, mode);
+    const box = h('div.stack');
+    const skill = isUrl ? 'safe.verdict' : 'wild.types';
+    const answer = isUrl ? L.VERDICT[P.verdict(c)] : L.ACTIONS[act];
+    const choices = isUrl ? Object.values(L.VERDICT) : [...new Set([answer, ...Object.values(L.ACTIONS).filter(x => x !== answer).slice(0, 3)])];
+    const pickOne = choice => {
+      judged.add(raw);
+      const ok = choice === answer;
+      store.set('qr', L.record(progress(), skill, ok, today()));
+      fill(box, h('div.row', null, h('span', { class: `chip ${ok ? 'good' : 'bad'}` }, ok ? icon('check') : icon('x'), ok ? `You said “${choice}”: right` : `You said “${choice}”; it’s “${answer}”`)), leadsTo(c, mode));
+    };
+    fill(box,
+      h('p', { style: { fontWeight: 600 } }, isUrl ? 'Before you look: is this safe to open?' : 'Before you look: what will it do?'),
+      h('div.qr-choices', null, choices.map((ch, i) => h('button.btn.qr-choice', { type: 'button', id: `qr-gate-${i}`, onclick: () => pickOne(ch) }, ch))),
+      h('button.btn.sm.ghost', { type: 'button', id: 'qr-gate-skip', onclick: () => { judged.add(raw); fill(box, leadsTo(c, mode)); } }, 'Just show me'));
+    return box;
+  }
+
+  function leadsTo(c, mode = 'explain') {
+    if (mode === 'hide') {
+      const v = P.verdict(c);
+      return h('div.stack', null,
+        h('div.row', null, h('span', { class: `chip ${v === 'fine' ? 'good' : v === 'careful' ? 'warn' : 'bad'}` }, L.VERDICT[v]), h('b', null, c.label), h('span.muted', null, c.action)),
+        c.fields.length ? h('dl.qr-facts', null, c.fields.map(([k, val]) => [h('dt', null, k), h('dd.mono', { style: { overflowWrap: 'anywhere' } }, val)])) : null,
+        c.flags.filter(f => f.level !== 'info').map(f => h('div.faint', { style: { fontSize: 'var(--t-xs)' } }, f.msg)));
+    }
     const worst = c.flags.some(f => f.level === 'bad') ? 'bad' : c.flags.some(f => f.level === 'warn') ? 'warn' : 'good';
     return h('div.stack', null,
       h('div.row', null, h('span', { class: `chip ${worst}` }, worst === 'good' ? icon('check') : null, c.label), h('span.faint.mono', { style: { fontSize: 'var(--t-xs)' } }, `${c.length} chars`)),
@@ -853,7 +1104,7 @@
     const lv = L.recommendedLevel(progress());
     page.append(h('header.page-head', null,
       h('div', null, h('div.eyebrow', null, 'Learn'), h('h1', null, 'QR Codes')),
-      h('div.actions', null, h('span.chip.mark', null, `Level ${lv} · ${L.LEVELS[lv - 1].title}`))), tabs, body);
+      h('div.actions', null, progress().exam && progress().exam.passed ? h('span.chip.mark', null, icon('check'), 'Reader') : h('span.chip.mark', null, `Level ${lv} · ${L.LEVELS[lv - 1].title}`))), tabs, body);
     paint();
     return stopAll;
   }
