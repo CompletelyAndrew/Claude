@@ -6,8 +6,15 @@
 (function (Bench) {
   'use strict';
   const { h, icon, store, toast } = Bench;
-  const Q = Bench.qr, L = Bench.qrlearn, P = Bench.qrpayload;
+  const Q = Bench.qr, L = Bench.qrlearn, P = Bench.qrpayload, S = Bench.qrscan;
 
+  // Timers, the camera and listeners a tab starts; all stopped when the tab or page changes
+  const live = new Set();
+  const onStop = fn => { live.add(fn); return fn; };
+  const stopAll = () => { for (const fn of live) { try { fn(); } catch (e) { console.error(e); } } live.clear(); };
+
+  // replaceChildren, but flattening arrays and skipping null/false like h() does
+  const fill = (el, ...kids) => { el.replaceChildren(); Bench.append(el, kids); return el; };
   const today = () => Bench.ledger.isoDay(new Date());
   const progress = () => { const s = store.get('qr', null); return s && s.skills ? s : L.empty(); };
   const ui = () => ({ tab: 'path', level: 1, explain: 'auto', inspect: 'https://bit.ly/3menu-table12', ...store.get('qr:ui', {}) });
@@ -84,7 +91,7 @@
       const ids = pool();
       const id = L.nextSkill(p, today(), ids) || ids[Math.floor(Math.random() * ids.length)];
       const d = L.drill(id, (Date.now() + count++ * 7919) >>> 0);
-      const e = Q.encode(d.code.text, d.code);
+      const e = d.maskOnly != null ? Q.maskPattern(2, d.maskOnly) : Q.encode(d.code.text, d.code);
       const feedback = h('div', { 'aria-live': 'polite' });
       let answered = false;
       const buttons = d.choices.map((c, i) => h('button.btn.qr-choice', { type: 'button', id: `qr-choice-${i}`, onclick: () => answer(c) }, c));
@@ -95,7 +102,7 @@
         store.set('qr', L.record(progress(), id, ok, today()));
         buttons.forEach(b => { b.disabled = true; if (b.textContent === d.answer) b.classList.add('right'); else if (b.textContent === c) b.classList.add('wrong'); });
         const box = L.boxOf(progress(), id);
-        feedback.replaceChildren(h('div.stack', null,
+        fill(feedback, h('div.stack', null,
           h('div.row', null, h('span', { class: `chip ${ok ? 'good' : 'bad'}` }, ok ? icon('check') : icon('x'), ok ? 'Right' : `It was “${d.answer}”`),
             h('span.faint.mono', { style: { fontSize: 'var(--t-xs)' }, title: 'Review box' }, `${L.skill(id).label} ${boxDots(box)}`)),
           h('p.muted', null, d.why),
@@ -103,10 +110,10 @@
         if (onAnswer) onAnswer(ok);
         feedback.querySelector('button').focus();
       }
-      body.replaceChildren(
+      fill(body, 
         h('div.eyebrow', null, L.skill(id).label),
         h('p', { style: { fontWeight: 600 } }, d.prompt),
-        plate(e, { highlight: d.highlight, markQuiet: id === 'anatomy.quiet', max: '300px', label: 'Drill code' }),
+        plate(e, { highlight: d.highlight, markQuiet: id === 'anatomy.quiet', max: '300px', label: d.maskOnly != null ? 'Mask pattern' : 'Drill code' }),
         h('div.qr-choices', null, buttons), feedback);
     }
     next();
@@ -143,11 +150,34 @@
       h('div.sheet-head', null, h('h2', null, 'From teacher to tool'), h('span.chip', null, `Tools now: ${{ explain: 'explaining', predict: 'quizzing', hide: 'facts only' }[L.scaffold(p, ready, mode)]}`)),
       h('div.sheet-body.stack', null,
         h('p.muted', null, 'Inspect and Make explain everything at first. As skills reach mastery they start asking you to predict before they reveal, and finally just show the facts, like reading a book’s cover. Override it here.'),
-        explainSeg(() => go('path'))));
+        explainSeg(() => go('path')),
+        h('div.row', null,
+          h('button.btn.sm', { type: 'button', id: 'qr-backup', onclick: backup }, icon('download'), 'Back up progress'),
+          h('button.btn.sm.ghost', { type: 'button', id: 'qr-restore', onclick: () => restore(() => go('path')) }, icon('upload'), 'Restore')),
+        h('p.faint', { style: { fontSize: 'var(--t-xs)' } }, 'Progress is kept in this browser. Back it up to move between Bench and the stand-alone QR app, or to another device.')));
 
     const review = due ? h('section.sheet', null, h('div.sheet-body.row', null, h('b', null, `${due} skill${due > 1 ? 's' : ''} due for review`), h('span.spacer'), h('button.btn.primary', { type: 'button', id: 'qr-review', onclick: () => go('learn', { level: 'review' }) }, 'Review now'))) : null;
     return [stats, review, h('div.qr-path', null, route, dial)];
   }
+  const SLICES = ['qr', 'qr:ui', 'qr:make', 'qr:scans'];
+  function backup() {
+    const state = Object.fromEntries(SLICES.map(k => [k, store.get(k, null)]).filter(([, v]) => v != null));
+    Bench.download(`qr-progress-${today()}.json`, JSON.stringify({ app: 'bench-qr', version: 1, exported: new Date().toISOString(), state }, null, 2), 'application/json');
+  }
+  async function restore(after) {
+    const f = await Bench.pickFile('.json,application/json');
+    if (!f) return;
+    try {
+      const data = JSON.parse(f.text);
+      // A full Bench backup works too: take just the QR slices from it
+      const state = data.app === 'bench-qr' ? data.state : data.app === 'bench' ? data.state : null;
+      if (!state || !state.qr || !Array.isArray(state.qr.log)) throw new Error('No QR progress in that file');
+      for (const k of SLICES) if (state[k] != null) store.set(k, state[k]);
+      toast(`Restored ${state.qr.log.length} answers`);
+      after();
+    } catch (e) { toast(e.message || 'That file could not be read'); }
+  }
+
   function stat(k, v, d) { return h('div.stat', null, h('div.eyebrow', null, k), h('div.v', null, v), h('div.d', null, d)); }
 
   function explainSeg(after) {
@@ -164,8 +194,8 @@
       L.LEVELS.filter(l => l.ready).map(l => h('button', { type: 'button', id: `qr-level-${l.n}`, 'aria-pressed': String(lv === l.n), onclick: () => go('learn', { level: l.n }) }, `${l.n} · ${l.title}`)),
       h('button', { type: 'button', id: 'qr-level-review', 'aria-pressed': String(lv === 'review'), onclick: () => go('learn', { level: 'review' }) }, 'Review'));
     if (lv === 'review') return [levelSeg, drillPanel({ title: 'Review', pool: readySkills })];
-    const lesson = lv === 2 ? coverLesson() : anatomyLesson();
-    return [levelSeg, ...lesson, drillPanel({ title: `Practice · Level ${lv}`, pool: () => L.levelSkills(lv) })];
+    const lesson = { 1: anatomyLesson, 2: coverLesson, 3: bitsLesson, 4: eccLesson }[lv] || anatomyLesson;
+    return [levelSeg, ...lesson(), drillPanel({ title: `Practice · Level ${lv}`, pool: () => L.levelSkills(lv) })];
   }
 
   // Level 1: tap any module to learn what it is; then break the code and see when it stops reading
@@ -185,16 +215,16 @@
     function paint() {
       const c = current();
       const highlight = breaking ? [...flipped].map(i => [i % e.size, Math.floor(i / e.size)]) : part === 'quiet' ? [] : roleCells(e, part);
-      view.replaceChildren(plate(c, { highlight, onCell, markQuiet: !breaking && part === 'quiet', label: breaking ? 'Code you can damage' : 'Tap a module to see what it is' }));
+      fill(view, plate(c, { highlight, onCell, markQuiet: !breaking && part === 'quiet', label: breaking ? 'Code you can damage' : 'Tap a module to see what it is' }));
       view.classList.toggle('breaking', breaking);
-      partsSeg.replaceChildren(...PARTS.map(pt => {
+      fill(partsSeg, ...PARTS.map(pt => {
         const n = pt.id === 'quiet' ? 0 : roleCells(e, pt.id).length;
         const absent = pt.id !== 'quiet' && !n;
         return h('button', { type: 'button', id: `qr-part-${pt.id}`, 'aria-pressed': String(!breaking && part === pt.id), disabled: absent, title: absent ? `Version ${e.version} has none` : '', onclick: () => { part = pt.id; breaking = false; paint(); } }, pt.name);
       }));
       const pt = PARTS.find(x => x.id === part);
       const count = part === 'quiet' ? `${(e.size + 8) ** 2 - e.size ** 2} modules of margin` : `${roleCells(e, part).length} modules`;
-      info.replaceChildren(
+      fill(info, 
         breaking ? h('div.stack', null, h('h3', null, 'Break it'), h('p.muted', null, 'Tap or drag across the code to flip modules. Error correction repairs the damage until a block runs out of repair bytes. Paste a logo at level M, then try again at H.'),
           h('div.seg', { role: 'group', 'aria-label': 'Error-correction level' }, 'LMQH'.split('').map(x => h('button', { type: 'button', id: `qr-break-ec-${x}`, 'aria-pressed': String(ec === x), onclick: () => { ec = x; build(); paint(); } }, `${x} · ${Q.EC[x].recover}%`))))
           : h('div.stack', null, h('div.row', null, h('h3', null, pt.name), h('span.chip.mono', null, count)), h('p', null, pt.why)),
@@ -203,7 +233,7 @@
           breaking ? h('button.btn.sm', { type: 'button', id: 'qr-logo', onclick: () => { cover(0.1); } }, 'Paste a logo') : null,
           breaking ? h('button.btn.sm', { type: 'button', id: 'qr-scratch', onclick: () => { scratch(0.04); } }, 'Scratch it') : null,
           breaking ? h('button.btn.sm.ghost', { type: 'button', id: 'qr-repair', onclick: () => { flipped = new Set(); paint(); } }, icon('reset'), 'Repair') : null));
-      status.replaceChildren(breaking || flipped.size ? decodeStatus(c) : h('span.faint', { style: { fontSize: 'var(--t-xs)' } }, `Version ${e.version} · ${e.size}×${e.size} · level ${e.ec} · mask ${e.mask}`));
+      fill(status, breaking || flipped.size ? decodeStatus(c) : h('span.faint', { style: { fontSize: 'var(--t-xs)' } }, `Version ${e.version} · ${e.size}×${e.size} · level ${e.ec} · mask ${e.mask}`));
     }
     function onCell([x, y], phase) {
       const inGrid = x >= 0 && y >= 0 && x < e.size && y < e.size;
@@ -257,9 +287,9 @@
     const vView = h('div.qr-stage'), vFacts = h('div.stack');
     const vPaint = () => {
       const e = Q.encode('1', { ec: 'L', version: v });
-      vView.replaceChildren(plate(e, { max: '280px', label: `Version ${v}` }));
+      fill(vView, plate(e, { max: '280px', label: `Version ${v}` }));
       const al = Q.alignmentPositions(v).length, alignCount = al ? al * al - 3 : 0;
-      vFacts.replaceChildren(
+      fill(vFacts, 
         h('div.qr-formula.mono', null, `${e.size} = 17 + 4 × ${v}`),
         h('p.muted', null, `Version ${v} is ${e.size} modules across, with ${alignCount ? `${alignCount} alignment pattern${alignCount > 1 ? 's' : ''}` : 'no alignment patterns'}${v >= 7 ? ' and version blocks beside two finders' : ''}.`),
         h('table.qr-table', null, h('thead', null, h('tr', null, h('th', null, 'Level'), h('th', null, 'Bytes'), h('th', null, 'Digits'))),
@@ -274,10 +304,10 @@
     const fPaint = () => {
       const e = Q.encode('READ THE STRIP', { ec, mask });
       const cells = [[0, 8], [1, 8], [2, 8], [3, 8], [4, 8]];
-      fView.replaceChildren(plate(e, { highlight: cells, max: '280px', label: 'Format strip highlighted' }));
+      fill(fView, plate(e, { highlight: cells, max: '280px', label: 'Format strip highlighted' }));
       const raw = cells.map(([x, y]) => e.modules[y * e.size + x]);
       const xor = [1, 0, 1, 0, 1], plain = raw.map((b, i) => b ^ xor[i]);
-      fBits.replaceChildren(h('table.qr-table.qr-bits', null,
+      fill(fBits, h('table.qr-table.qr-bits', null,
         h('tbody', null,
           h('tr', null, h('th', null, 'Modules'), ...raw.map(b => h('td.mono', null, b))),
           h('tr', null, h('th', null, 'XOR'), ...xor.map(b => h('td.mono.faint', null, b))),
@@ -323,6 +353,349 @@
   }
   function press(evt) { evt.target.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === evt.target))); }
 
+  // Level 3: from characters to bits to modules, and why the mask is there
+  function bitsLesson() {
+    let text = 'HELLO WORLD';
+    const modesView = h('div'), streamView = h('div.stack'), placeView = h('div.qr-stage'), placeInfo = h('div.stack'), maskView = h('div.stack');
+    let e, k = 0, playing = null, maskPick = null, patternOnly = false;
+    const kSlider = h('input', { type: 'range', id: 'qr-place-k', min: 0, value: 0, 'aria-label': 'Codeword', oninput: ev => { k = +ev.target.value; paintPlace(); } });
+    const playBtn = h('button.btn.sm', { type: 'button', id: 'qr-place-play', onclick: () => togglePlay() });
+
+    function paintAll() {
+      e = Q.encode(text || ' ', { ec: 'L' });
+      k = Math.min(k, e.stream.length - 1);
+      kSlider.max = e.stream.length - 1;
+      paintModes(); paintStream(); paintPlace(); maskPick = null; paintMasks();
+    }
+    function paintModes() {
+      const rows = ['numeric', 'alnum', 'byte'].map(mode => {
+        let bits = null;
+        try { bits = Q.encode(text || ' ', { ec: 'L', mode }).bits.segment; } catch (err) { bits = null; }
+        const fits = mode === 'numeric' ? /^\d*$/.test(text) : mode === 'alnum' ? [...text].every(c => Q.ALNUM.includes(c)) : true;
+        return h('tr', { class: e.mode === mode ? 'qr-row-on' : '' },
+          h('td', null, h('b', null, { numeric: 'Numeric', alnum: 'Alphanumeric', byte: 'Byte' }[mode])),
+          h('td.mono', null, { numeric: '0–9', alnum: '0–9 A–Z space $%*+-./:', byte: 'anything (UTF-8)' }[mode]),
+          h('td.num', null, { numeric: '3⅓', alnum: '5½', byte: '8+' }[mode]),
+          h('td.num', null, fits && bits != null ? `${bits}` : '—'));
+      });
+      fill(modesView, h('table.qr-table', null,
+        h('thead', null, h('tr', null, h('th', null, 'Mode'), h('th', null, 'Characters'), h('th', null, 'Bits / char'), h('th', null, 'Bits here'))),
+        h('tbody', null, rows)),
+        h('p.faint', { style: { fontSize: 'var(--t-xs)', marginTop: '8px' } }, `“${text.slice(0, 40)}” uses ${{ numeric: 'numeric', alnum: 'alphanumeric', byte: 'byte' }[e.mode]} mode: the most compact one that can hold every character.`));
+    }
+    function paintStream() {
+      const groups = Q.bitGroups(e);
+      const names = { mode: 'Mode', count: 'Count', data: 'Data', terminator: 'Terminator', padbits: 'Pad bits', padbyte: 'Pad byte' };
+      fill(streamView, 
+        h('div.qr-bitstream', null, groups.slice(0, 60).map(g => h('span', { class: `qr-bitgroup ${g.kind}`, title: names[g.kind] }, h('small', null, g.label), h('code', null, g.bits)))),
+        groups.length > 60 ? h('p.faint', { style: { fontSize: 'var(--t-xs)' } }, `… and ${groups.length - 60} more groups.`) : null,
+        h('p.muted', { style: { fontSize: 'var(--t-sm)' } }, `${e.bits.segment} bits of message, ${e.bits.terminator} terminator, ${e.bits.padBits} to finish the byte, then ${e.bits.padBytes} pad bytes fill version ${e.version}-L’s ${e.data.length} data codewords. Reed–Solomon then adds ${e.stream.length - e.data.length} check codewords.`),
+        h('div.qr-bytes.mono', null, e.stream.map((b, i) => h('span', { class: i < e.data.length ? '' : 'ecc', title: `Codeword ${i + 1}` }, b.toString(16).padStart(2, '0').toUpperCase()))));
+    }
+    function paintPlace() {
+      const cells = [];
+      for (let i = 0; i < e.size * e.size; i++) if (e.codeword[i] === k) cells.push([i % e.size, Math.floor(i / e.size)]);
+      fill(placeView, plate(e, { highlight: cells, max: '320px', label: `Codeword ${k + 1} highlighted` }));
+      kSlider.value = k;
+      const o = e.owner[k], b = e.stream[k];
+      fill(placeInfo, 
+        h('div.row', null, h('b', null, `Codeword ${k + 1} of ${e.stream.length}`), h('span', { class: `chip ${o.ecc ? 'blue' : 'mark'}` }, o.ecc ? 'error correction' : 'data'), h('span.chip.mono', null, `0x${b.toString(16).padStart(2, '0').toUpperCase()} = ${b.toString(2).padStart(8, '0')}`)),
+        h('p.faint', { style: { fontSize: 'var(--t-xs)' } }, `Block ${o.block + 1}, ${o.ecc ? 'check' : 'data'} byte ${o.index + 1}. The stored modules differ from these bits wherever mask ${e.mask} flips them.`));
+      fill(playBtn, playing ? icon('pause') : icon('play'), playing ? 'Pause' : 'Play the zig-zag');
+    }
+    function togglePlay() {
+      if (playing) { playing(); live.delete(playing); playing = null; paintPlace(); return; }
+      const id = setInterval(() => { k = (k + 1) % e.stream.length; paintPlace(); }, 280);
+      playing = onStop(() => clearInterval(id));
+      paintPlace();
+    }
+    function paintMasks() {
+      const trials = Q.MASKS.map((_, m) => Q.encode(text || ' ', { ec: 'L', mask: m }));
+      const best = e.mask;
+      const shown = maskPick ?? best;
+      const t = trials[shown], pen = t.penalties[shown];
+      fill(maskView, 
+        h('div.qr-masks', null, trials.map((tr, m) => h('button', { type: 'button', id: `qr-mask-${m}`, class: `qr-mask${m === shown ? ' on' : ''}${m === best ? ' best' : ''}`, 'aria-pressed': String(m === shown), onclick: () => { maskPick = m; paintMasks(); } },
+          plate(patternOnly ? Q.maskPattern(e.version, m) : tr, { quiet: 1, label: `Mask ${m}` }), h('span.mono', null, `${m} · ${tr.penalties[m].total}`)))),
+        h('div.row', null, h('label.row', { for: 'qr-mask-pattern', style: { fontSize: 'var(--t-sm)' } }, h('input', { type: 'checkbox', id: 'qr-mask-pattern', checked: patternOnly, onchange: ev => { patternOnly = ev.target.checked; paintMasks(); } }), 'Show only the pattern each mask flips')),
+        h('table.qr-table', null, h('tbody', null,
+          h('tr', null, h('th', null, `Mask ${shown}`), h('td.mono', { colspan: 2 }, Q.MASK_FORMULAS[shown])),
+          h('tr', null, h('td', null, 'Runs of 5+ same colour'), h('td.num', null, pen.runs), h('td.faint', null, '3 + 1 per extra module')),
+          h('tr', null, h('td', null, '2×2 blocks'), h('td.num', null, pen.blocks), h('td.faint', null, '3 each')),
+          h('tr', null, h('td', null, 'Finder look-alikes'), h('td.num', null, pen.finderLike), h('td.faint', null, '40 each')),
+          h('tr', null, h('td', null, 'Dark/light balance'), h('td.num', null, pen.balance), h('td.faint', null, `${pen.darkPct.toFixed(1)}% dark`)),
+          h('tr', null, h('th', null, 'Total'), h('td.num', null, h('b', null, pen.total)), h('td', null, shown === best ? h('span.chip.mark', null, 'lowest: chosen') : `${pen.total - trials[best].penalties[best].total} more than mask ${best}`)))));
+    }
+
+    const textIn = h('input.input', { id: 'qr-bits-text', value: text, 'aria-label': 'Text to encode', oninput: Bench.debounce(ev => { text = ev.target.value; paintAll(); }, 200) });
+    const samples = h('div.row.qr-examples', null, [['Digits', '20261017'], ['Shouty URL', 'HTTPS://BENCH.EXAMPLE/QR'], ['Normal URL', 'https://bench.example/qr'], ['Emoji', 'Hi ☕']].map(([n, t], i) =>
+      h('button.chip', { type: 'button', id: `qr-bits-sample-${i}`, onclick: () => { textIn.value = text = t; paintAll(); } }, n)));
+    paintAll();
+    return [
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '1 · Pick a mode')), h('div.sheet-body.stack', null,
+        h('p', null, 'Before anything is drawn, the text becomes bits. QR has compact modes for digits and for upper-case text; anything else is byte mode. That’s why codes printed with SHOUTY URLs can be smaller.'),
+        h('label.field', { for: 'qr-bits-text' }, h('span', null, 'Your text'), textIn), samples, modesView)),
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '2 · The bit stream')), h('div.sheet-body.stack', null,
+        h('p', null, 'Four bits name the mode, a count says how many characters follow, then the characters themselves. A terminator, a few zeros to finish the byte, and alternating pad bytes fill what’s left. Then it’s cut into 8-bit codewords.'), streamView)),
+      h('div.grid.qr-lesson', null,
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '3 · Zig-zag placement')), h('div.sheet-body.stack', null, placeView, h('label.field', { for: 'qr-place-k' }, h('span', null, 'Codeword'), kSlider), h('div.row', null, playBtn))),
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Two columns at a time')), h('div.sheet-body.stack', null,
+          h('p', null, 'Codewords are laid into the free modules starting at the bottom right, in columns two modules wide: right then left, climbing up, then down the next column, then up again, skipping anything reserved. The vertical timing column is jumped over.'), placeInfo))),
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '4 · Masks')), h('div.sheet-body.stack', null,
+        h('p', null, 'Raw data can accidentally draw big blobs or something that looks like a finder. So the encoder XORs the data area with each of eight patterns, scores the results, and keeps the least troublesome. Tap a mask to see its score.'), maskView))];
+  }
+
+  // Level 4: blocks, the repair budget, and a damage lab
+  function eccLesson() {
+    let ec = 'M', version = 5, block = 0;
+    const text = 'https://bench.example/qr/level-4?lesson=error-correction';
+    let e, flipped = new Set(), paintTo = null;
+    const blocksView = h('div.qr-stage'), blocksTable = h('div'), labView = h('div.qr-stage'), labBars = h('div.stack'), labStatus = h('div', { 'aria-live': 'polite' });
+    const rsView = h('div.stack');
+    let rsBlock = null;
+
+    function build() { e = Q.encode(text, { ec, version }); flipped = new Set(); block = Math.min(block, Q.blockLayout(version, ec).length - 1); rsBlock = null; }
+    function paintBlocks() {
+      const cells = [];
+      for (let i = 0; i < e.size * e.size; i++) if (e.codeword[i] >= 0 && e.owner[e.codeword[i]].block === block) cells.push([i % e.size, Math.floor(i / e.size)]);
+      fill(blocksView, plate(e, { highlight: cells, max: '320px', label: `Block ${block + 1} highlighted` }));
+      const layout = Q.blockLayout(version, ec);
+      fill(blocksTable, h('table.qr-table', null,
+        h('thead', null, h('tr', null, h('th', null, 'Block'), h('th', null, 'Data'), h('th', null, 'Check'), h('th', null, 'Repairs'))),
+        h('tbody', null, layout.map((b, i) => h('tr', { class: i === block ? 'qr-row-on' : '' },
+          h('td', null, h('button.btn.sm.ghost', { type: 'button', id: `qr-block-${i}`, 'aria-pressed': String(i === block), onclick: () => { block = i; paintBlocks(); } }, `Block ${i + 1}`)),
+          h('td.num', null, b.data), h('td.num', null, b.ecc), h('td.num', null, `${Math.floor(b.ecc / 2)} codewords`))))),
+        h('p.faint', { style: { fontSize: 'var(--t-xs)', marginTop: '8px' } }, `Version ${version}-${ec}: ${Q.totalCodewords(version)} codewords, ${Q.dataCodewords(version, ec)} of them data. Notice how a block’s modules are spread all over the symbol.`));
+    }
+    function current() { const m = e.modules.slice(); for (const i of flipped) m[i] ^= 1; return m; }
+    function paintLab() {
+      const m = current();
+      fill(labView, plate({ ...e, modules: m }, { highlight: [...flipped].map(i => [i % e.size, Math.floor(i / e.size)]), onCell, max: '320px', label: 'Code you can damage' }));
+      const dmg = Q.blockDamage(e, m);
+      fill(labBars, ...dmg.map((b, i) => {
+        const over = b.errors > b.budget;
+        return h('div.qr-blockbar', null, h('span.mono', null, `B${i + 1}`),
+          h('div.qr-bar', { 'aria-hidden': 'true' }, h('i', { style: { width: pct(Math.min(1, b.errors / Math.max(1, b.budget))), background: over ? 'var(--bad)' : b.errors / b.budget > 0.7 ? 'var(--warn)' : 'var(--ink)' } })),
+          h('span.mono', { class: over ? 'qr-over' : '' }, `${b.errors}/${b.budget}`));
+      }));
+      fill(labStatus, decodeStatus({ modules: m }));
+    }
+    function onCell([x, y], phase) {
+      if (x < 0 || y < 0 || x >= e.size || y >= e.size) return;
+      const i = y * e.size + x;
+      if (phase === 'down') paintTo = !flipped.has(i);
+      if (paintTo && !flipped.has(i)) flipped.add(i); else if (!paintTo && flipped.has(i)) flipped.delete(i); else return;
+      paintLab();
+    }
+    function blob() {
+      const cx = 8 + Math.random() * (e.size - 16), cy = 8 + Math.random() * (e.size - 16);
+      for (let y = 0; y < e.size; y++) for (let x = 0; x < e.size; x++) if (Math.hypot(x - cx, y - cy) < 3 && Math.random() < 0.8) flipped.add(y * e.size + x);
+      paintLab();
+    }
+    function paintRs() {
+      const layout = Q.blockLayout(version, ec), b0 = layout[0];
+      if (!rsBlock) rsBlock = { orig: e.blocks[0].data.concat(e.blocks[0].ecc), cur: e.blocks[0].data.concat(e.blocks[0].ecc) };
+      const work = rsBlock.cur.slice();
+      const fixed = Q.rsCorrect(work, b0.ecc);
+      const bad = rsBlock.cur.map((v, i) => v !== rsBlock.orig[i]);
+      const nBad = bad.filter(Boolean).length;
+      fill(rsView, 
+        h('div.qr-bytes.mono.qr-rs', null, rsBlock.cur.map((v, i) => h('button', { type: 'button', id: `qr-rs-${i}`, class: `${i < b0.data ? '' : 'ecc'}${bad[i] ? ' hit' : ''}`, title: `${i < b0.data ? 'Data' : 'Check'} byte ${i + 1}: tap to corrupt`, onclick: () => { rsBlock.cur[i] = bad[i] ? rsBlock.orig[i] : rsBlock.orig[i] ^ (0x5a + i); paintRs(); } }, v.toString(16).padStart(2, '0').toUpperCase()))),
+        h('div.row', null,
+          fixed === null ? h('span.chip.bad', null, `${nBad} wrong: past repair`) : nBad ? h('span.chip.good', null, icon('check'), `Found and fixed ${fixed.length} byte${fixed.length > 1 ? 's' : ''}`) : h('span.chip', null, 'No errors: every check sum is zero'),
+          h('span.faint', { style: { fontSize: 'var(--t-xs)' } }, `Budget: ${Math.floor(b0.ecc / 2)} unknown errors`),
+          nBad ? h('button.btn.sm.ghost', { type: 'button', id: 'qr-rs-reset', onclick: () => { rsBlock = null; paintRs(); } }, icon('reset'), 'Reset') : null));
+    }
+    function paintAll() { paintBlocks(); paintLab(); paintRs(); }
+    const ecSeg = h('div.seg', { role: 'group', 'aria-label': 'Error-correction level' }, 'LMQH'.split('').map(x => h('button', { type: 'button', id: `qr-ecc-${x}`, 'aria-pressed': String(ec === x), onclick: ev => { ec = x; press(ev); build(); paintAll(); } }, `${x} · ${Q.EC[x].recover}%`)));
+    const vSeg = h('div.seg', { role: 'group', 'aria-label': 'Version' }, [3, 5, 10].map(v => h('button', { type: 'button', id: `qr-ecc-v${v}`, 'aria-pressed': String(version === v), onclick: ev => { version = v; press(ev); build(); paintAll(); } }, `v${v}`)));
+    build(); paintAll();
+    return [
+      h('section.sheet', null, h('div.sheet-body.row', null, h('span.faint', { style: { fontSize: 'var(--t-sm)' } }, 'Code for this lesson'), vSeg, ecSeg)),
+      h('div.grid.qr-lesson', null,
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '1 · Blocks')), h('div.sheet-body.stack', null, blocksView)),
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Split, then interleave')), h('div.sheet-body.stack', null,
+          h('p', null, 'The data codewords are split into blocks, and each block gets its own Reed–Solomon check codewords. Then the blocks are interleaved: one codeword from each in turn. So a scratch in one place costs every block a little, instead of wiping out one.'), blocksTable))),
+      h('div.grid.qr-lesson', null,
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '2 · Damage lab')), h('div.sheet-body.stack', null, labView, labStatus,
+          h('div.row', null, h('button.btn.sm', { type: 'button', id: 'qr-ecc-blob', onclick: blob }, 'Add a smudge'),
+            h('button.btn.sm.ghost', { type: 'button', id: 'qr-ecc-repair', onclick: () => { flipped = new Set(); paintLab(); } }, icon('reset'), 'Repair')))),
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Each block’s budget')), h('div.sheet-body.stack', null,
+          h('p', null, 'Drag across the code or add smudges. Each bar counts the codewords that block has lost against what it can repair: half its check codewords. The code reads only while every bar stays inside its budget.'), labBars))),
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '3 · Inside one block')), h('div.sheet-body.stack', null,
+        h('p', null, 'These are block 1’s bytes: data, then check bytes (highlighted). Tap bytes to corrupt them. Reed–Solomon treats the bytes as a polynomial and the check bytes make it divisible by a known one, so any change leaves a remainder that pinpoints which bytes are wrong and by how much, up to half the number of check bytes.'), rsView))];
+  }
+
+  // ---------------------------------------------------------------- Scan
+  function scanTab(go) {
+    const canvas = h('canvas.qr-photo', { 'aria-label': 'Camera or photo' });
+    const video = h('video', { playsinline: true, muted: true, autoplay: true, style: { display: 'none' } });
+    video.muted = true;
+    const overlay = h('div.qr-overlay');
+    const stage = h('div.qr-scanstage', null, h('div.qr-scanframe', null, canvas, overlay), h('div.qr-scanhint', null, icon('qr'), h('span', null, 'Point the camera at a code, choose a photo, or paste an image.')));
+    const status = h('div', { 'aria-live': 'polite' });
+    const result = h('div.stack');
+    const camBtn = h('button.btn.primary', { type: 'button', id: 'qr-camera', onclick: () => (stream ? stopCamera() : startCamera()) });
+    const fileIn = h('input', { type: 'file', id: 'qr-photo', accept: 'image/*', class: 'visually-hidden', onchange: ev => { const f = ev.target.files[0]; if (f) readFile(f); ev.target.value = ''; } });
+    let stream = null, timer = null;
+
+    const paintCam = () => fill(camBtn, icon(stream ? 'pause' : 'play'), stream ? 'Stop camera' : 'Use camera');
+    paintCam();
+
+    async function startCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        fill(status, h('span.chip.warn', null, 'No camera here'), ' ', h('span.muted', { style: { fontSize: 'var(--t-sm)' } }, window.isSecureContext === false ? 'Browsers only allow the camera on https pages. Choose a photo instead.' : 'This browser or frame can’t use the camera. Choose a photo instead.'));
+        return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+      } catch (err) {
+        stream = null;
+        fill(status, h('span.chip.warn', null, 'Camera unavailable'), ' ', h('span.muted', { style: { fontSize: 'var(--t-sm)' } }, err && err.name === 'NotAllowedError' ? 'Permission was denied. Allow the camera, or choose a photo instead.' : 'No camera could be opened. Choose a photo instead.'));
+        return;
+      }
+      video.srcObject = stream;
+      try { await video.play(); } catch (err) { /* autoplay will start it */ }
+      stage.classList.add('live');
+      paintCam();
+      fill(status, h('span.faint', null, 'Looking for a code…'));
+      const tick = () => {
+        if (!stream) return;
+        if (video.readyState >= 2 && video.videoWidth) {
+          const img = grab(video, video.videoWidth, video.videoHeight, 720);
+          const res = S.scan(img);
+          drawOverlay(res, img);
+          if (res.ok) { stopCamera(); show(res, 'camera'); return; }
+          if (res.finders && res.finders.length) fill(status, h('span.faint', null, explainMiss(res)));
+        }
+        timer = setTimeout(tick, 140);
+      };
+      tick();
+    }
+    function stopCamera() {
+      clearTimeout(timer);
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      stream = null;
+      video.srcObject = null;
+      stage.classList.remove('live');
+      paintCam();
+    }
+    onStop(stopCamera);
+
+    // Draw a frame or photo into the canvas (at most `max` px on a side) and return its pixels
+    function grab(src, w, h0, max) {
+      const k = Math.min(1, max / Math.max(w, h0));
+      canvas.width = Math.round(w * k); canvas.height = Math.round(h0 * k);
+      const g = canvas.getContext('2d', { willReadFrequently: true });
+      g.drawImage(src, 0, 0, canvas.width, canvas.height);
+      stage.classList.add('has-image');
+      return g.getImageData(0, 0, canvas.width, canvas.height);
+    }
+
+    function readFile(file) {
+      stopCamera();
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        let res = null, pixels = null;
+        // Try a sharp large copy first, then smaller ones (big photos can be noisy)
+        for (const max of [1200, 800, 500]) {
+          pixels = grab(img, img.naturalWidth, img.naturalHeight, max);
+          res = S.scan(pixels);
+          if (res.ok) break;
+        }
+        URL.revokeObjectURL(url);
+        drawOverlay(res, pixels);
+        if (res.ok) show(res, 'photo');
+        else { fill(result); fill(status, h('span.chip.bad', null, 'Not read'), ' ', h('span.muted', { style: { fontSize: 'var(--t-sm)' } }, explainMiss(res))); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); toast('That file isn’t an image this browser can open'); };
+      img.src = url;
+    }
+    const onPaste = ev => {
+      const item = [...(ev.clipboardData ? ev.clipboardData.items : [])].find(i => i.type.startsWith('image/'));
+      if (item) { ev.preventDefault(); readFile(item.getAsFile()); }
+    };
+    document.addEventListener('paste', onPaste);
+    onStop(() => document.removeEventListener('paste', onPaste));
+
+    function explainMiss(res) {
+      const n = (res.finders || []).length;
+      if (res.stage === 'finders') return n ? `Found ${n} finder square${n > 1 ? 's' : ''} so far. All three need to be in view with a little margin.` : 'No finder squares yet. Fill more of the frame with the code and hold steady.';
+      if (res.stage === 'triangle') return 'Found square shapes, but not three in a QR layout. Move closer or straighten up.';
+      if (res.stage === 'format') return 'Found the code, but the format strip by the finders is unreadable. Try more light or less glare.';
+      if (res.stage === 'ecc') return 'Found the code and laid a grid on it, but too many modules came out wrong for error correction. Hold steadier, move closer, or flatten the code.';
+      return res.error || 'No QR code found.';
+    }
+
+    function drawOverlay(res, img) {
+      if (!img) { overlay.innerHTML = ''; return; }
+      const W = img.width, H = img.height;
+      let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">`;
+      if (res && res.corners) svg += `<polygon class="qr-ov-shadow" points="${res.corners.map(p => p.join(',')).join(' ')}"/><polygon class="qr-ov-line" points="${res.corners.map(p => p.join(',')).join(' ')}"/>`;
+      for (const f of (res && res.finders) || []) svg += `<circle class="qr-ov-shadow" cx="${f.x}" cy="${f.y}" r="${f.size * 4}"/><circle class="qr-ov-line" cx="${f.x}" cy="${f.y}" r="${f.size * 4}"/>`;
+      if (res && res.alignment) svg += `<circle class="qr-ov-line" cx="${res.alignment.x}" cy="${res.alignment.y}" r="${(res.finders[0].size || 4) * 2}"/>`;
+      overlay.innerHTML = svg + '</svg>';
+    }
+
+    function show(res, source) {
+      remember(res.text);
+      const p = progress();
+      const mode = L.scaffold(p, ['cover.version', 'cover.ec', 'cover.mask', 'ecc.budget'], ui().explain);
+      const c = P.classify(res.text);
+      const steps = [
+        ['Finders', 'Three finder squares fix the corners and which way is up.' + (res.inverted ? ' This one is printed light-on-dark, so the scanner inverted it first.' : '') + (res.mirrored ? ' It was mirrored, as if seen from behind.' : '')],
+        ['Size', `${res.size} modules across → version ${res.version}.` + (res.alignment ? ' The alignment bullseye corrected the perspective.' : '')],
+        ['Format', `Error correction ${res.ec} (~${Q.EC[res.ec].recover}%), mask ${res.mask}.` + (res.formatDistance ? ` The format strip had ${res.formatDistance} bad bit${res.formatDistance > 1 ? 's' : ''}; BCH fixed ${res.formatDistance > 1 ? 'them' : 'it'}.` : '')],
+        ['Repair', res.corrected ? `Reed–Solomon fixed ${res.corrected} codeword${res.corrected > 1 ? 's' : ''} across ${res.corrections.filter(Boolean).length} block${res.corrections.filter(Boolean).length > 1 ? 's' : ''}.` : 'Nothing needed repair.'],
+        ['Data', `${res.segments.filter(sg => sg.mode !== 'eci').map(sg => `${sg.count} in ${sg.mode} mode`).join(', ')}: ${res.text.length} characters.`],
+      ];
+      const clean = { version: res.version, size: res.size, modules: Uint8Array.from(res.grid) };
+      if (res.mirrored) { const t = new Uint8Array(res.size * res.size); for (let y = 0; y < res.size; y++) for (let x = 0; x < res.size; x++) t[x * res.size + y] = clean.modules[y * res.size + x]; clean.modules = t; }
+      const how = mode === 'hide'
+        ? h('p.mono.qr-oneline', null, `v${res.version} · ${res.size}² · ${res.ec} · mask ${res.mask} · repaired ${res.corrected}`)
+        : h('ol.qr-steps', null, steps.map(([k, v], i) => h('li', null, h('b', null, k), ' ', mode === 'predict' && i > 0 && i < 4
+          ? (() => { const b = h('button.btn.sm.ghost', { type: 'button', id: `qr-scan-reveal-${i}`, onclick: () => b.replaceWith(h('span', null, v)) }, 'Guess, then reveal'); return b; })()
+          : h('span', null, v))));
+      fill(status, h('span.chip.good', null, icon('check'), source === 'camera' ? 'Read from the camera' : 'Read from the photo'));
+      const isLink = c.type === 'url' && /^https?:/i.test(c.href || '');
+      const risky = c.flags.some(f => f.level === 'bad');
+      fill(result, 
+        h('div.grid.qr-lesson', null,
+          h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'How it was read')), h('div.sheet-body.stack', null,
+            plate(clean, { max: '220px', label: 'The grid the scanner sampled' }), how)),
+          h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Where it leads')), h('div.sheet-body.stack', null, leadsTo(c),
+            h('div.row', null,
+              isLink ? h('a', { class: `btn ${risky ? 'danger' : 'primary'}`, id: 'qr-open-link', href: c.href, target: '_blank', rel: 'noopener noreferrer' }, risky ? 'Open anyway' : 'Open link', icon('arrow')) : null,
+              h('button.btn', { type: 'button', id: 'qr-scan-copy', onclick: () => Bench.copy(res.text, 'Contents copied') }, icon('copy'), 'Copy'),
+              h('button.btn.ghost', { type: 'button', id: 'qr-scan-inspect', onclick: () => { setUi({ inspect: res.text }); go('inspect'); } }, 'Inspect', icon('arrow')))))),
+        history());
+    }
+
+    function remember(text) {
+      store.update('qr:scans', list => [{ t: text, d: today() }, ...list.filter(x => x.t !== text)].slice(0, 30), []);
+    }
+    function history() {
+      const list = store.get('qr:scans', []);
+      if (!list.length) return null;
+      return h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Recent scans'), h('div.actions', null, h('button.btn.sm.ghost', { type: 'button', id: 'qr-scans-clear', onclick: () => { store.set('qr:scans', []); result.lastChild && result.lastChild.remove(); } }, icon('trash'), 'Clear'))),
+        h('ul.list', null, list.slice(0, 10).map((x, i) => {
+          const c = P.classify(x.t);
+          return h('li', null, h('span.chip', null, c.label), h('span.grow.title.mono', { style: { fontSize: 'var(--t-sm)' } }, x.t.length > 70 ? x.t.slice(0, 70) + '…' : x.t),
+            h('span.faint', { style: { fontSize: 'var(--t-xs)' } }, x.d),
+            h('button.btn.sm.ghost', { type: 'button', id: `qr-scan-h-${i}`, onclick: () => { setUi({ inspect: x.t }); go('inspect'); } }, 'Inspect'));
+        })));
+    }
+
+    fill(result, history() || '');
+    return [
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Scan'), h('div.actions', null, camBtn,
+        h('label.btn', { for: 'qr-photo' }, icon('upload'), 'Choose photo'), fileIn)),
+        h('div.sheet-body.stack', null, stage, video, status,
+          h('p.faint', { style: { fontSize: 'var(--t-xs)' } }, 'Everything is read here on your device; nothing is uploaded. Links never open by themselves. You see where they lead first.'))),
+      result];
+  }
+
   // ---------------------------------------------------------------- Inspect
   const EXAMPLES = [
     ['Menu link', 'https://cafe-luna.example/menu?table=12'],
@@ -341,9 +714,9 @@
       const text = input.value;
       setUi({ inspect: text });
       let e;
-      try { e = Q.encode(text || ' ', { ec: 'M' }); } catch (err) { left.replaceChildren(h('div.empty', null, h('b', null, 'Too long'), err.message)); right.replaceChildren(); return; }
-      left.replaceChildren(plate(e, { max: '320px', label: 'Inspected code' }), coverReading(e, p));
-      right.replaceChildren(leadsTo(P.classify(text)));
+      try { e = Q.encode(text || ' ', { ec: 'M' }); } catch (err) { fill(left, h('div.empty', null, h('b', null, 'Too long'), err.message)); fill(right); return; }
+      fill(left, plate(e, { max: '320px', label: 'Inspected code' }), coverReading(e, p));
+      fill(right, leadsTo(P.classify(text)));
     };
     input.addEventListener('input', Bench.debounce(paint, 200));
     paint();
@@ -351,7 +724,7 @@
       h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'What’s inside'), h('div.actions', null, explainSeg(() => go('inspect')))),
         h('div.sheet-body.stack', null, input, h('div.row.qr-examples', null, h('span.faint', { style: { fontSize: 'var(--t-xs)' } }, 'Try:'),
           EXAMPLES.map(([name, t], i) => h('button.chip', { type: 'button', id: `qr-example-${i}`, onclick: () => { input.value = t; paint(); } }, name))),
-          h('p.faint', { style: { fontSize: 'var(--t-xs)' } }, 'Camera and photo scanning are coming in the next update. For now, paste what your phone’s scanner shows you.'))),
+          h('div.row', null, h('span.faint', { style: { fontSize: 'var(--t-xs)' } }, 'Have the code itself, not its text?'), h('button.btn.sm', { type: 'button', id: 'qr-to-scan', onclick: () => go('scan') }, icon('qr'), 'Scan it')))),
       h('div.grid.qr-lesson', null, h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Cover reading')), h('div.sheet-body', null, left)),
         h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Where it leads')), h('div.sheet-body', null, right)))];
   }
@@ -372,7 +745,7 @@
       const value = h('dd', null, f.v);
       if (mode === 'predict') {
         const btn = h('button.btn.sm.ghost', { type: 'button', id: `qr-reveal-${i}`, onclick: () => btn.replaceWith(h('span', null, f.v)) }, 'Guess, then reveal');
-        value.replaceChildren(btn);
+        fill(value, btn);
       } else value.append(h('div.faint', { style: { fontSize: 'var(--t-xs)' } }, f.why));
       return [h('dt', null, f.k, h('span.mono.faint', { title: 'Your review box' }, ' ', boxDots(L.boxOf(p, f.skill)))), value];
     }));
@@ -407,9 +780,9 @@
     const payload = () => P.build[st.kind]({ ...Object.fromEntries(KINDS.find(k => k.id === st.kind).fields.map(([k, , def]) => [k, Array.isArray(def) ? def[0] : def])), ...(st.values[st.kind] || {}) });
 
     function paintForm() {
-      kindSeg.replaceChildren(...KINDS.map(k => h('button', { type: 'button', id: `qr-make-${k.id}`, 'aria-pressed': String(st.kind === k.id), onclick: () => { st.kind = k.id; save(); paintForm(); paintOut(); } }, k.label)));
+      fill(kindSeg, ...KINDS.map(k => h('button', { type: 'button', id: `qr-make-${k.id}`, 'aria-pressed': String(st.kind === k.id), onclick: () => { st.kind = k.id; save(); paintForm(); paintOut(); } }, k.label)));
       const kind = KINDS.find(k => k.id === st.kind), vals = st.values[st.kind] || (st.values[st.kind] = {});
-      form.replaceChildren(...kind.fields.map(([key, label, def, type]) => {
+      fill(form, ...kind.fields.map(([key, label, def, type]) => {
         const id = `qr-field-${st.kind}-${key}`;
         const set = ev => { vals[key] = ev.target.value; save(); paintOut(); };
         let ctl;
@@ -428,12 +801,12 @@
       const text = payload();
       let e;
       try { e = Q.encode(text || ' ', { ec: st.ec, mask: st.mask }); }
-      catch (err) { out.replaceChildren(h('div.empty', null, h('b', null, 'Too long'), err.message)); return; }
+      catch (err) { fill(out, h('div.empty', null, h('b', null, 'Too long'), err.message)); return; }
       const c = P.classify(text);
       const mode = L.scaffold(progress(), ['cover.choose', 'cover.contents'], ui().explain);
       const note = mode === 'hide' ? null : h('p.faint', { style: { fontSize: 'var(--t-xs)' } },
         `${text.length} characters in ${e.mode} mode fill ${pct(e.bits.segment / e.bits.capacity)} of version ${e.version} at level ${e.ec}. ${st.ec === 'H' ? 'H leaves room for a logo.' : st.ec === 'L' ? 'L keeps it small but fragile.' : ''} Mask ${e.mask} scored ${e.penalties[e.mask].total} penalty points${st.mask === 'auto' ? ', the lowest of the eight' : ''}.`);
-      out.replaceChildren(
+      fill(out, 
         plate(e, { max: '340px', label: `QR code for ${c.label}` }),
         h('div.row', null, h('span.chip', null, c.label), h('span.mono.faint', { style: { fontSize: 'var(--t-xs)' } }, `v${e.version} · ${e.size}×${e.size} · ${e.ec} · mask ${e.mask}`)),
         note,
@@ -464,7 +837,7 @@
   }
 
   // ---------------------------------------------------------------- page
-  const TABS = [['path', 'Path'], ['learn', 'Learn'], ['inspect', 'Inspect'], ['make', 'Make']];
+  const TABS = [['path', 'Path'], ['learn', 'Learn'], ['scan', 'Scan'], ['inspect', 'Inspect'], ['make', 'Make']];
   function render(page) {
     const arg = Bench.takeArg();
     if (arg && typeof arg === 'object') setUi(arg);
@@ -472,16 +845,17 @@
     const go = (tab, patch = {}) => { setUi({ tab, ...patch }); paint(); window.scrollTo?.(0, 0); };
     function paint() {
       const t = ui().tab;
-      tabs.replaceChildren(...TABS.map(([id, label]) => h('button', { type: 'button', role: 'tab', id: `qr-tab-${id}`, 'aria-selected': String(t === id), onclick: () => go(id) }, label)));
-      const fn = { path: pathTab, learn: learnTab, inspect: inspectTab, make: makeTab }[t] || pathTab;
-      body.replaceChildren(...fn(go).flat().filter(Boolean));
+      fill(tabs, ...TABS.map(([id, label]) => h('button', { type: 'button', role: 'tab', id: `qr-tab-${id}`, 'aria-selected': String(t === id), onclick: () => go(id) }, label)));
+      stopAll();
+      const fn = { path: pathTab, learn: learnTab, scan: scanTab, inspect: inspectTab, make: makeTab }[t] || pathTab;
+      fill(body, ...fn(go).flat().filter(Boolean));
     }
     const lv = L.recommendedLevel(progress());
     page.append(h('header.page-head', null,
       h('div', null, h('div.eyebrow', null, 'Learn'), h('h1', null, 'QR Codes')),
       h('div.actions', null, h('span.chip.mark', null, `Level ${lv} · ${L.LEVELS[lv - 1].title}`))), tabs, body);
     paint();
-    return null;
+    return stopAll;
   }
 
   Bench.module({
@@ -491,6 +865,7 @@
     commands: () => [
       { label: 'Continue QR lesson', run: () => Bench.navigate('qr', { tab: 'learn', level: L.recommendedLevel(progress()) }) },
       { label: 'Review due QR skills', run: () => Bench.navigate('qr', { tab: 'learn', level: 'review' }) },
+      { label: 'Scan a QR code', run: () => Bench.navigate('qr', { tab: 'scan' }) },
       { label: 'Make a QR code', run: () => Bench.navigate('qr', { tab: 'make' }) },
       { label: 'Inspect QR contents', run: () => Bench.navigate('qr', { tab: 'inspect' }) },
     ],

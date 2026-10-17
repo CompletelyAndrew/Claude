@@ -407,19 +407,7 @@
     copies.forEach((bits, i) => { const f = readFormat(bits); if (f && (!format || f.distance < format.distance)) { format = f; formatCopy = i; } });
     if (!format) return { ok: false, stage: 'format', error: 'Both copies of the format information are too damaged to read.', copies };
 
-    const sk = skeleton(version);
-    const order = placementOrder(sk);
-    const f = MASKS[format.mask];
-    const raw = [];
-    let byte = 0;
-    order.forEach((idx, i) => {
-      const x = idx % size, y = Math.floor(idx / size);
-      byte = (byte << 1) | (at(x, y) ^ (f(x, y) ? 1 : 0));
-      if ((i & 7) === 7) { raw.push(byte); byte = 0; }
-    });
-    const total = totalCodewords(version);
-    raw.length = total;
-
+    const raw = readCodewords(modules, size, format.mask);
     // De-interleave
     const layout = blockLayout(version, format.ec);
     const blocks = layout.map(b => ({ data: [], ecc: [], len: b.data, n: b.ecc }));
@@ -433,7 +421,7 @@
     for (let bi = 0; bi < blocks.length; bi++) {
       const b = blocks[bi], cw = b.data.concat(b.ecc);
       const fixed = rsCorrect(cw, b.n);
-      if (fixed === null) return { ok: false, stage: 'ecc', error: `Block ${bi + 1} of ${blocks.length} has more damage than its ${b.n} error-correction codewords can repair.`, version, ec: format.ec, mask: format.mask, block: bi };
+      if (fixed === null) return { ok: false, stage: 'ecc', error: `Block ${bi + 1} of ${blocks.length} has more damage than its ${b.n} error-correction codewords can repair.`, version, size, ec: format.ec, mask: format.mask, block: bi, raw };
       corrections.push(fixed.length);
       data.push(...cw.slice(0, b.len));
     }
@@ -445,6 +433,65 @@
       formatDistance: format.distance, formatCopy, corrections, corrected: corrections.reduce((a, b) => a + b, 0),
       capacity: corrections.map((_, i) => Math.floor(blocks[i].n / 2)), data, raw,
     };
+  }
+
+  // Unmask the data modules and read them back as codewords, in placement order
+  function readCodewords(modules, size, mask) {
+    const order = placementOrder(skeleton(versionOf(size)));
+    const f = MASKS[mask], raw = [];
+    let byte = 0;
+    order.forEach((idx, i) => {
+      const x = idx % size, y = Math.floor(idx / size);
+      byte = (byte << 1) | (modules[idx] ^ (f(x, y) ? 1 : 0));
+      if ((i & 7) === 7) { raw.push(byte); byte = 0; }
+    });
+    raw.length = totalCodewords(versionOf(size));
+    return raw;
+  }
+
+  // Codeword errors per block, comparing a (damaged) grid against the symbol it came from
+  function blockDamage(e, modules) {
+    const raw = readCodewords(modules, e.size, e.mask);
+    const layout = blockLayout(e.version, e.ec);
+    const errors = layout.map(() => 0);
+    raw.forEach((b, i) => { if (b !== e.stream[i]) errors[e.owner[i].block]++; });
+    return layout.map((b, i) => ({ errors: errors[i], budget: Math.floor(b.ecc / 2), data: b.data, ecc: b.ecc }));
+  }
+
+  // The XOR pattern a mask lays over the data area (function patterns left light)
+  function maskPattern(version, mask) {
+    const sk = skeleton(version), out = new Uint8Array(sk.size * sk.size);
+    for (let y = 0; y < sk.size; y++) for (let x = 0; x < sk.size; x++) { const i = y * sk.size + x; out[i] = !sk.fn[i] && MASKS[mask](x, y) ? 1 : 0; }
+    return { version, size: sk.size, modules: out, role: sk.role };
+  }
+
+  // The bit stream of an encoded symbol, split into labelled groups for lessons
+  function bitGroups(e) {
+    const out = [];
+    const bin = (v, n) => v.toString(2).padStart(n, '0');
+    const { mode, text, version } = e;
+    out.push({ kind: 'mode', bits: bin(MODES[mode].bits, 4), label: `${mode} mode` });
+    const count = e.segments[0].count;
+    out.push({ kind: 'count', bits: bin(count, countBits(mode, version)), label: `${count} ${mode === 'byte' ? 'bytes' : 'characters'}` });
+    if (mode === 'numeric') for (let i = 0; i < text.length; i += 3) { const g = text.slice(i, i + 3); out.push({ kind: 'data', bits: bin(+g, g.length * 3 + 1), label: g }); }
+    else if (mode === 'alnum') for (let i = 0; i < text.length; i += 2) {
+      const pair = text.slice(i, i + 2);
+      out.push({ kind: 'data', bits: pair.length === 2 ? bin(ALNUM.indexOf(pair[0]) * 45 + ALNUM.indexOf(pair[1]), 11) : bin(ALNUM.indexOf(pair), 6), label: pair });
+    }
+    else {
+      const bytes = utf8(text);
+      let ci = 0;
+      const chars = [...text];
+      for (const ch of chars) {
+        const n = utf8(ch).length;
+        out.push({ kind: 'data', bits: bytes.slice(ci, ci + n).map(b => bin(b, 8)).join(''), label: ch === ' ' ? '␠' : ch });
+        ci += n;
+      }
+    }
+    if (e.bits.terminator) out.push({ kind: 'terminator', bits: '0'.repeat(e.bits.terminator), label: 'end' });
+    if (e.bits.padBits) out.push({ kind: 'padbits', bits: '0'.repeat(e.bits.padBits), label: 'to a byte' });
+    for (let i = 0; i < e.bits.padBytes; i++) out.push({ kind: 'padbyte', bits: bin(i % 2 ? 0x11 : 0xec, 8), label: i % 2 ? '0x11' : '0xEC' });
+    return out;
   }
 
   function parseSegments(bytes, version) {
@@ -501,7 +548,7 @@
     EC, EC_BY_BITS, MODES, ALNUM, ROLE, ROLE_NAMES, MASKS, MASK_FORMULAS,
     sizeOf, versionOf, totalCodewords, dataCodewords, blockLayout, alignmentPositions, capacity, countBits, bestMode,
     rsEncode, rsCorrect, formatBits, versionBits, readFormat, formatPositions, penalty, skeleton, placementOrder,
-    encode, decodeMatrix, parseSegments,
+    encode, decodeMatrix, parseSegments, readCodewords, blockDamage, maskPattern, bitGroups,
   };
   root.Bench = root.Bench || {};
   root.Bench.qr = api;

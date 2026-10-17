@@ -4,6 +4,8 @@
 
 Open `dist/bench.html` straight from disk, or run `npm start` and visit http://localhost:8080.
 
+The QR Codes module also runs as its own app: `dist/qr.html` (or `qr.html` when served). It is installable separately with its own icon. On the same site it shares progress with Bench, and Path → Back up progress moves it anywhere else.
+
 | Module | What it does |
 |---|---|
 | **Today** | What's due, focus minutes this week, net for the month, next trip, budget alerts, a scratchpad that remembers. |
@@ -12,7 +14,7 @@ Open `dist/bench.html` straight from disk, or run `npm start` and visit http://l
 | **Focus** | Pomodoro timer that survives reloads, generated brown/pink/rain noise, a 12-week heatmap and where your time went. |
 | **Game Lab** | Animated pixel sprite editor (frames, onion skin, mirror, fill, PNG and sprite-sheet export), palette harmonies with hue-shifted shading ramps (copy as GDScript, Unity C#, `.gpl`), WCAG contrast check, an easing explorer that writes Godot 4 / DOTween / CSS code, and a dice roller with a 20,000-roll distribution chart. |
 | **Toolbox** | JSON validator/formatter, Base64/URL/HTML encoders, JWT decoder, Unix timestamps, unit converter (including 60fps frames), text case converter, UUIDs and passwords. |
-| **QR Codes** | A course that turns into a tool. Six levels from anatomy to reading a code "by its cover": tap any module to learn what it is, break a code and watch error correction repair it, read the version, EC level and mask by eye, then drill it with spaced repetition. Inspect says what a payload does and flags traps (shorteners, lookalike domains, raw IPs, `http`). Make builds link, Wi-Fi, contact, email, SMS, phone and location codes as PNG/SVG. The tools explain less as you master the skills. |
+| **QR Codes** | A course that turns into a tool. Six levels toward reading any code "by its cover" (four built so far): **Anatomy** (tap any module; break a code and watch it still read), **Read the cover** (version, EC level and mask by eye), **Bits** (modes, the bit stream, zig-zag placement, the eight masks and their penalty scores) and **Error correction** (blocks, interleaving, a damage lab, Reed–Solomon you can corrupt byte by byte), with spaced-repetition drills. **Scan** reads codes from the camera, a photo or a pasted image with its own decoder, shows how it found them, and never opens a link by itself. **Inspect** says what a payload does and flags traps (shorteners, lookalike domains, raw IPs, `http`). **Make** builds link, Wi-Fi, contact, email, SMS, phone and location codes as PNG/SVG. The tools explain less as you master the skills. Also ships as its own app: `qr.html` / `dist/qr.html`. |
 | **Ledger** | Monthly overview with a six-month chart, transactions with bank CSV import and auto-categorising, category budgets, and an invoice builder. |
 | **Trips** | Day-by-day itinerary, grouped packing list, destination clock, a currency converter, Booking.com search, and travel spend pulled from the Ledger. |
 
@@ -26,8 +28,8 @@ Open `dist/bench.html` straight from disk, or run `npm start` and visit http://l
 ## Development
 
 ```bash
-npm test         # 39 unit tests for the pure core (node --test, zero deps)
-npm run build    # → dist/bench.html (single offline file) + dist/bench-artifact.html
+npm test         # 42 unit tests for the pure core (node --test, zero deps)
+npm run build    # → dist/bench.html + dist/qr.html (single offline files) and their -artifact versions
 npm run smoke    # Playwright: every module × desktop/phone × light/dark, plus interaction checks
 npm start        # serve the source tree
 ```
@@ -35,9 +37,10 @@ npm start        # serve the source tree
 ```
 index.html            entry; build markers tell tools/build.mjs what to inline
 css/bench.css         the brand: tokens, components, light + dark
-js/core/              pure logic, unit-tested in Node (markdown, quickadd, ledger, color, easing, tools)
+js/core/              pure logic, unit-tested in Node (markdown, quickadd, ledger, color, easing, tools, qr, qrscan, qrpayload, qrlearn)
 js/core/kit.js        DOM helpers, icons, persisted store, toasts
 js/app.js             shell: registry, router, command palette, shortcuts, theme, backups
+js/solo.js            one-module shell, so a module can ship as its own app (qr.html)
 js/modules/           one file per module
 tools/build.mjs       inliner, no bundler
 tools/smoke.mjs       browser end-to-end checks + screenshots

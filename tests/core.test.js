@@ -384,3 +384,76 @@ test('qrlearn: every drill is answerable and deterministic', () => {
     assert.equal(String(((bits[0] ^ 1) << 2) | (bits[1] << 1) | (bits[2] ^ 1)), m.answer);
   }
 });
+
+// ---- QR scanning: render codes into synthetic photos, then read them back ----------------
+const qrscan = require('../js/core/qrscan.js');
+function photo(e, { W = 360, H = 360, scale = 5, angle = 0, tilt = 0, noise = 0, blur = false, invert = false, gradient = 0, seed = 7 } = {}) {
+  let r = seed;
+  const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  const q = 4, S = e.size + 2 * q, ca = Math.cos(angle), sa = Math.sin(angle);
+  let grey = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let px = x - W / 2, py = y - H / 2;
+    const w = 1 + (tilt * py) / H; // projective tilt, like holding the phone at an angle
+    px /= w; py /= w;
+    const ux = (ca * px + sa * py) / scale + S / 2 - q, uy = (-sa * px + ca * py) / scale + S / 2 - q;
+    const mx = Math.floor(ux), my = Math.floor(uy);
+    let dark = mx >= 0 && my >= 0 && mx < e.size && my < e.size && e.modules[my * e.size + mx] === 1;
+    if (invert) dark = !dark;
+    grey[y * W + x] = (dark ? 35 : 220) * (1 - (gradient * x) / W) + (rnd() - 0.5) * noise;
+  }
+  if (blur) {
+    const g2 = new Float32Array(W * H);
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      let s = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) s += grey[(y + dy) * W + x + dx];
+      g2[y * W + x] = s / 9;
+    }
+    grey = g2;
+  }
+  const data = new Uint8ClampedArray(W * H * 4);
+  for (let i = 0; i < W * H; i++) { data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = grey[i]; data[i * 4 + 3] = 255; }
+  return { width: W, height: H, data };
+}
+
+test('qrscan: reads codes from rotated, tilted, noisy, blurred and inverted photos', () => {
+  const cases = [
+    ['HELLO WORLD', 'M', {}],
+    ['HELLO WORLD', 'M', { angle: Math.PI, tilt: 0.3 }],
+    ['https://bench.example/qr?lesson=3', 'Q', { angle: 0.5 }],
+    ['https://bench.example/qr?lesson=3', 'L', { angle: Math.PI / 2, noise: 70, gradient: 0.5 }],
+    ['WIFI:T:WPA;S:Cafe Luna;P:espresso;;', 'H', { tilt: 0.35, angle: 0.2, blur: true }],
+    ['WIFI:T:WPA;S:Cafe Luna;P:espresso;;', 'M', { invert: true, angle: -0.4 }],
+    ['z'.repeat(200), 'M', { angle: 0.3, scale: 3.6, blur: true }],
+    ['0123456789'.repeat(30), 'L', { scale: 2.6, W: 300, H: 300 }],
+  ];
+  for (const [text, ec, o] of cases) {
+    const e = qr.encode(text, { ec });
+    const res = qrscan.scan(photo(e, o));
+    assert.ok(res.ok, `${text.slice(0, 12)} ${JSON.stringify(o)}: ${res.error}`);
+    assert.equal(res.text, text);
+    assert.equal(res.version, e.version);
+    assert.equal(res.finders.length, 3);
+    assert.equal(res.inverted, !!o.invert);
+  }
+});
+
+test('qrscan: an image without a code fails gracefully', () => {
+  const W = 120, H = 90, data = new Uint8ClampedArray(W * H * 4);
+  for (let i = 0; i < data.length; i += 4) data[i] = data[i + 1] = data[i + 2] = (i * 7919) % 255;
+  const res = qrscan.scan({ width: W, height: H, data });
+  assert.equal(res.ok, false);
+  assert.ok(res.error);
+});
+
+test('qrlearn: damage drills answer from a real decode', () => {
+  for (let seed = 1; seed <= 20; seed++) {
+    const d = qrl.drill('ecc.survive', seed), e = qr.encode(d.code.text, d.code);
+    const m = e.modules.slice();
+    for (const [x, y] of d.flips) m[y * e.size + x] ^= 1;
+    assert.equal(qr.decodeMatrix(m).ok ? 'Yes' : 'No', d.answer);
+  }
+  const e = qr.encode('https://bench.example', { ec: 'M' });
+  assert.ok(qr.bitGroups(e).map(g => g.bits).join('').length === e.bits.capacity);
+  assert.equal(qr.blockDamage(e, e.modules).every(b => b.errors === 0), true);
+});

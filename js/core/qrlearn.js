@@ -11,8 +11,8 @@
   const LEVELS = [
     { n: 1, id: 'anatomy', title: 'Anatomy', blurb: 'Name every part of the symbol and what it is for.', ready: true },
     { n: 2, id: 'cover', title: 'Read the cover', blurb: 'Version, error correction, mask and rough size, read by eye.', ready: true },
-    { n: 3, id: 'bits', title: 'Bits', blurb: 'Modes, the bit stream, zig-zag placement and masks.', ready: false },
-    { n: 4, id: 'ecc', title: 'Error correction', blurb: 'Reed–Solomon blocks and how much damage a code survives.', ready: false },
+    { n: 3, id: 'bits', title: 'Bits', blurb: 'Modes, the bit stream, zig-zag placement and masks.', ready: true },
+    { n: 4, id: 'ecc', title: 'Error correction', blurb: 'Reed–Solomon blocks and how much damage a code survives.', ready: true },
     { n: 5, id: 'wild', title: 'In the wild', blurb: 'What codes hold, where you meet them and what they do.', ready: false },
     { n: 6, id: 'safe', title: 'Safety & mastery', blurb: 'Spot traps, decode by hand and read any code like a cover.', ready: false },
   ];
@@ -30,6 +30,15 @@
     { id: 'cover.mask', level: 2, label: 'Mask from the format strip' },
     { id: 'cover.contents', level: 2, label: 'Guess the contents from density' },
     { id: 'cover.choose', level: 2, label: 'Choosing an EC level' },
+    { id: 'bits.modes', level: 3, label: 'Which mode' },
+    { id: 'bits.cost', level: 3, label: 'Bits per character' },
+    { id: 'bits.stream', level: 3, label: 'The bit stream' },
+    { id: 'bits.placement', level: 3, label: 'Zig-zag placement' },
+    { id: 'bits.masks', level: 3, label: 'Mask patterns' },
+    { id: 'ecc.budget', level: 4, label: 'Repair budget' },
+    { id: 'ecc.levels', level: 4, label: 'Level percentages' },
+    { id: 'ecc.blocks', level: 4, label: 'Blocks & interleaving' },
+    { id: 'ecc.survive', level: 4, label: 'Will it still scan?' },
   ];
   const skill = id => SKILLS.find(s => s.id === id);
 
@@ -185,6 +194,101 @@
       return { skill: 'cover.choose', prompt: q.prompt, code: { text: 'EC LEVELS', ec: q.answer[0] }, highlight: [], choices: ['L (7%)', 'M (15%)', 'Q (25%)', 'H (30%)'], answer: q.answer, why: q.why };
     },
   };
+
+  const MODE_NAMES = { numeric: 'Numeric', alnum: 'Alphanumeric', byte: 'Byte', kanji: 'Kanji' };
+  Object.assign(GENERATORS, {
+    'bits.modes': r => {
+      const t = pick(r, [
+        ['4006381333931', 'numeric', 'Only digits: numeric mode packs three into 10 bits.'],
+        ['0800 555 0199'.replace(/ /g, ''), 'numeric', 'Only digits: numeric mode.'],
+        ['HELLO WORLD', 'alnum', 'Upper-case letters, digits, space and $%*+-./: fit the 45-character alphanumeric set.'],
+        ['HTTPS://BENCH.EXAMPLE/QR', 'alnum', 'An upper-case URL fits alphanumeric mode, which is why some printers shout their links.'],
+        ['ROOM 12B-4', 'alnum', 'Upper-case, digits, space and “-” are all in the alphanumeric set.'],
+        ['https://bench.example/qr', 'byte', 'Lower-case letters are not in the alphanumeric set, so it falls back to byte mode.'],
+        ['Café 5€', 'byte', 'Accents and symbols need byte mode (UTF-8).'],
+        ['WIFI:T:WPA;S:Home;P:pw;;', 'byte', 'The semicolons and lower-case letters force byte mode.'],
+      ]);
+      return { skill: 'bits.modes', prompt: `Which mode encodes “${t[0]}” most compactly?`, code: { text: t[0], ec: 'M' }, highlight: [], choices: ['Numeric', 'Alphanumeric', 'Byte', 'Kanji'], answer: MODE_NAMES[t[1]], why: t[2] };
+    },
+    'bits.cost': r => {
+      const mode = pick(r, ['numeric', 'alnum', 'byte']);
+      const n = 3 + Math.floor(r() * 8);
+      const text = mode === 'numeric' ? Array.from({ length: n }, () => Math.floor(r() * 10)).join('') : mode === 'alnum' ? Array.from({ length: n }, () => pick(r, 'ABCDEFGHJKLMNPRSTUVWXYZ'.split(''))).join('') : Array.from({ length: n }, () => pick(r, 'abcdefghjkmnpqrstuvwxyz'.split(''))).join('');
+      const bits = mode === 'numeric' ? Math.floor(n / 3) * 10 + [0, 4, 7][n % 3] : mode === 'alnum' ? Math.floor(n / 2) * 11 + (n % 2) * 6 : n * 8;
+      const why = mode === 'numeric' ? `Digits go in threes: 10 bits per 3, then 7 for a pair or 4 for one left over. ${n} digits = ${bits} bits.`
+        : mode === 'alnum' ? `Characters go in pairs: 11 bits per pair (45 × first + second), 6 for a single one left over. ${n} characters = ${bits} bits.`
+        : `Byte mode spends 8 bits per byte. ${n} ASCII characters = ${bits} bits.`;
+      const pool = [...new Set([bits, bits + 2, bits - 2, n * 8, Math.ceil(n * 5.5), Math.ceil(n * 3.33), n * 6, n * 11].filter(x => x > 0).map(String))];
+      return { skill: 'bits.cost', prompt: `In ${MODE_NAMES[mode].toLowerCase()} mode, how many data bits do the ${n} characters “${text}” take (not counting the header)?`, code: { text, ec: 'M', mode }, highlight: [], choices: choicesWith(r, String(bits), pool), answer: String(bits), why };
+    },
+    'bits.stream': r => {
+      const q = pick(r, [
+        { prompt: 'What comes right after the 4-bit mode indicator?', answer: 'The character count', pool: ['The character count', 'The data', 'The mask number', 'The error-correction bytes'], why: 'Mode (4 bits), then how many characters follow (9–16 bits, depending on mode and version), then the data.' },
+        { prompt: 'After the data and its 0000 terminator, how is the rest of the space filled?', answer: 'Alternating bytes 0xEC and 0x11', pool: ['Alternating bytes 0xEC and 0x11', 'Zeros', 'Random noise', 'A copy of the data'], why: '11101100 and 00010001 alternate as padding, so a short message never leaves long runs of one colour.' },
+        { prompt: 'Where is the first data bit placed?', answer: 'The bottom-right corner', pool: ['The bottom-right corner', 'The top-left corner', 'The centre', 'Next to the timing pattern'], why: 'Placement starts bottom-right and snakes up and down in two-module-wide columns towards the left.' },
+        { prompt: 'In byte mode, how is “é” stored?', answer: 'As two UTF-8 bytes', pool: ['As two UTF-8 bytes', 'As one byte', 'As alphanumeric', 'It can’t be stored'], why: 'Byte mode carries raw bytes. Modern scanners read them as UTF-8, where é is 0xC3 0xA9.' },
+        { prompt: 'Why does the character count field get longer in bigger versions?', answer: 'Bigger codes can hold more characters', pool: ['Bigger codes can hold more characters', 'To fill space', 'For error correction', 'It doesn’t'], why: 'A version 40 code holds up to 7,089 digits, which needs 14 bits to count. Version 1 needs only 10.' },
+      ]);
+      return { skill: 'bits.stream', prompt: q.prompt, code: { text: 'BIT STREAM', ec: 'M' }, highlight: [], choices: shuffle(r, q.pool), answer: q.answer, why: q.why };
+    },
+    'bits.placement': r => {
+      const code = { text: samplePayload(r, 8 + Math.floor(r() * 8)), ec: 'L', version: 1 };
+      const e = Q.encode(code.text, code);
+      // a codeword that sits wholly inside one two-column strip
+      const cands = [];
+      for (let cw = 0; cw < e.stream.length; cw++) {
+        const cells = [];
+        for (let i = 0; i < e.size * e.size; i++) if (e.codeword[i] === cw) cells.push([i % e.size, Math.floor(i / e.size)]);
+        const cols = new Set(cells.map(([x]) => (x > 6 ? x - 1 : x) >> 1));
+        if (cols.size === 1 && cells.length === 8) cands.push({ cw, cells });
+      }
+      const c = pick(r, cands);
+      const order = c.cells.map(([x, y]) => e.placement.indexOf(y * e.size + x));
+      const first = c.cells[order.indexOf(Math.min(...order))], last = c.cells[order.indexOf(Math.max(...order))];
+      const answer = first[1] > last[1] ? 'Upwards' : 'Downwards';
+      return { skill: 'bits.placement', prompt: `The highlighted modules are codeword ${c.cw + 1}. Which way were its 8 bits laid down?`, code, highlight: c.cells, choices: ['Upwards', 'Downwards', 'Left to right', 'Right to left'], answer, why: 'Bits fill two-module-wide columns, right module then left, and the direction flips each column: up, down, up … starting at the bottom right.' };
+    },
+    'bits.masks': r => {
+      const mask = Math.floor(r() * 8);
+      const opts = choicesWith(r, mask, [0, 1, 2, 3, 4, 5, 6, 7]);
+      return { skill: 'bits.masks', prompt: 'This is the pattern a mask flips over the data area. Which formula draws it? (x is the column, y the row, from 0 at the top left.)', code: { text: 'MASK', ec: 'L', version: 2 }, maskOnly: mask, highlight: [], choices: opts.map(m => `${m}: ${Q.MASK_FORMULAS[m]}`), answer: `${mask}: ${Q.MASK_FORMULAS[mask]}`, why: `Every module where ${Q.MASK_FORMULAS[mask]} is flipped. Masks break up big blocks and finder-like patterns; the encoder tries all eight and keeps the lowest penalty.` };
+    },
+    'ecc.budget': r => {
+      const n = pick(r, [10, 16, 18, 22, 26, 28, 30]);
+      return { skill: 'ecc.budget', prompt: `A block carries ${n} error-correction codewords. How many wrong codewords can it repair, if it doesn’t know where they are?`, code: { text: 'REPAIR', ec: 'H' }, highlight: [], choices: shuffle(r, [String(n / 2), String(n), String(Math.floor(n / 4)), String(n * 2)]), answer: String(n / 2), why: `Reed–Solomon needs two check codewords per unknown error: one to find it, one to fix it. ${n} → ${n / 2}. If the scanner knows which are missing (erasures), it can rebuild up to ${n}.` };
+    },
+    'ecc.levels': r => {
+      const ec = pick(r, ['L', 'M', 'Q', 'H']);
+      return { skill: 'ecc.levels', prompt: `Roughly what share of its codewords can a level ${ec} code rebuild?`, code: { text: 'LEVELS', ec }, highlight: [], choices: ['7%', '15%', '25%', '30%'], answer: `${Q.EC[ec].recover}%`, why: 'L ≈ 7%, M ≈ 15%, Q ≈ 25%, H ≈ 30%. More repair means fewer bytes left for data at the same size.' };
+    },
+    'ecc.blocks': r => {
+      const q = pick(r, [
+        { prompt: 'Why are the blocks’ codewords interleaved (block 1, block 2, block 1, block 2 …) before placement?', answer: 'So one scratch spreads across blocks', pool: ['So one scratch spreads across blocks', 'To make it look random', 'To save space', 'So it reads faster'], why: 'Neighbouring codewords belong to different blocks, so a local scratch costs each block a little instead of one block a lot.' },
+        { prompt: 'A code reports “block 3 has more damage than it can repair”. What happens?', answer: 'The whole code fails to read', pool: ['The whole code fails to read', 'Only block 3’s text is missing', 'It reads with typos', 'It retries with a lower level'], why: 'Every block must repair. One unrecoverable block and the message is lost.' },
+        { prompt: 'Why do big versions split their codewords into many blocks?', answer: 'Reed–Solomon over bytes caps a block at 255 codewords', pool: ['Reed–Solomon over bytes caps a block at 255 codewords', 'To print faster', 'Each block is a separate message', 'For the mask'], why: 'Byte-sized Reed–Solomon works on blocks of at most 255. Big codes use many shorter blocks, which also keeps decoding fast.' },
+      ]);
+      return { skill: 'ecc.blocks', prompt: q.prompt, code: { text: 'BLOCKS', ec: 'Q', version: 5 }, highlight: [], choices: shuffle(r, q.pool), answer: q.answer, why: q.why };
+    },
+    'ecc.survive': r => {
+      const ec = pick(r, ['L', 'M', 'Q', 'H']);
+      const code = { text: samplePayload(r, 14 + Math.floor(r() * 10)), ec, version: 3 };
+      const e = Q.encode(code.text, code);
+      const want = r() < 0.5;
+      let flips = [], ok = null;
+      // Grow a blob from a random data module until the outcome is the one we want, or give up
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const cx = 9 + Math.floor(r() * (e.size - 18)), cy = 9 + Math.floor(r() * (e.size - 18));
+        const radius = 1.5 + r() * 4.5;
+        flips = [];
+        for (let y = 0; y < e.size; y++) for (let x = 0; x < e.size; x++) if (Math.hypot(x - cx, y - cy) <= radius && e.role[y * e.size + x] === Q.ROLE.data && r() < 0.7) flips.push([x, y]);
+        const m = e.modules.slice();
+        for (const [x, y] of flips) m[y * e.size + x] ^= 1;
+        ok = Q.decodeMatrix(m).ok;
+        if (ok === want) break;
+      }
+      return { skill: 'ecc.survive', prompt: `Level ${ec}, version 3. The highlighted modules have been flipped. Will it still scan?`, code, flips, highlight: flips, choices: ['Yes', 'No'], answer: ok ? 'Yes' : 'No', why: ok ? `Every block stayed within its repair budget (level ${ec} repairs ~${Q.EC[ec].recover}%).` : `At least one block lost more codewords than its check bytes can rebuild. A higher level, or less damage, would save it.` };
+    },
+  });
 
   function anatomy(r, part, v) {
     const code = { text: samplePayload(r, Math.max(6, Math.floor(Q.capacity(v, 'M') * 0.8))), ec: 'M', version: v };

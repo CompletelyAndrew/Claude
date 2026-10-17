@@ -2,3 +2,4 @@ node_modules/
 dist/shots/
 dist/bench-artifact.html
 .DS_Store
+dist/qr-artifact.html

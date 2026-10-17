@@ -5,7 +5,7 @@ Plain HTML/CSS/JS loaded with classic `<script>` tags so it also runs from `file
 
 ## Commands
 - `npm test` — unit tests for the pure core (`node --test`, no deps). Run under a couple of `TZ=` values when touching dates.
-- `npm run build` — inlines everything into `dist/bench.html` (offline single file) and `dist/bench-artifact.html` (body-only, for claude.ai Artifacts).
+- `npm run build` — inlines everything into `dist/bench.html` (offline single file) and `dist/bench-artifact.html` (body-only, for claude.ai Artifacts), plus the stand-alone `dist/qr.html` / `dist/qr-artifact.html` from `qr.html`.
 - `npm run smoke` — Playwright drives `dist/bench.html` at desktop + phone, light + dark; fails on console errors or sideways scroll. Screenshots land in `dist/shots/`.
 - `npm start` — serve the source tree on :8080.
 
@@ -14,6 +14,8 @@ Plain HTML/CSS/JS loaded with classic `<script>` tags so it also runs from `file
 - `js/core/kit.js` — browser helpers: `h()` element builder, `icon()`, `store`, `toast`, `copy`, `download`.
 - `js/app.js` — registry, hash router, command palette, shortcuts, theme, backups.
 - `js/modules/*.js` — one file per module, each calls `Bench.module({...})`. Modules never import each other; they share data through `store` slices.
+- `js/solo.js` — a one-module shell with the same `Bench.module` / `navigate` / `takeArg` contract as `app.js`. `qr.html` uses it to ship the QR module as its own app; a module that runs there must only rely on that contract plus `kit.js`.
+- QR: `qr.js` (encoder, Reed–Solomon, matrix decoder with role map), `qrscan.js` (image → grid), `qrpayload.js` (what a payload does + safety flags), `qrlearn.js` (skills, Leitner boxes, seeded drills). Tests rasterise codes into synthetic photos to exercise the scanner.
 - `js/seed.js` — first-run sample data, every record has `sample: true`.
 - `css/bench.css` — the brand. All colours are tokens on `:root` with dark overrides in both the media query and `[data-theme="dark"]`.
 

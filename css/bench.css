@@ -401,3 +401,51 @@ input[type="range"]#qr-cover-version { width: 100%; accent-color: var(--ink); }
 }
 .qr-examples button.chip { border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); font-family: var(--f-body); }
 .qr-examples button.chip:hover { background: var(--sunken); color: var(--ink); }
+
+/* QR: lessons 3–4 and the scanner */
+.qr-row-on td { background: var(--mark-soft); }
+.qr-bitstream { display: flex; flex-wrap: wrap; gap: 6px; }
+.qr-bitgroup { display: inline-flex; flex-direction: column; gap: 2px; padding: 4px 6px; border-radius: var(--r-sm); background: var(--sunken); min-width: 0; }
+.qr-bitgroup small { font: 600 10px/1.2 var(--f-mono); color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.qr-bitgroup code { font-size: var(--t-xs); overflow-wrap: anywhere; }
+.qr-bitgroup.mode, .qr-bitgroup.count { background: var(--mark-soft); }
+.qr-bitgroup.terminator, .qr-bitgroup.padbits, .qr-bitgroup.padbyte { background: transparent; border: 1px dashed var(--line-2); }
+.qr-bitgroup.terminator code, .qr-bitgroup.padbits code, .qr-bitgroup.padbyte code { color: var(--ink-3); }
+.qr-bytes { display: flex; flex-wrap: wrap; gap: 4px; font-size: var(--t-xs); }
+.qr-bytes > span, .qr-bytes > button { padding: 2px 5px; border-radius: 4px; background: var(--sunken); color: var(--ink-2); border: 1px solid transparent; font: inherit; }
+.qr-bytes > .ecc { background: var(--blue-soft); color: var(--blue); }
+.qr-rs > button { cursor: pointer; min-width: 30px; min-height: 30px; }
+.qr-rs > button.hit { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); }
+.qr-masks { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.qr-mask { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 6px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); cursor: pointer; font-size: var(--t-xs); color: var(--ink-2); }
+.qr-mask .qr-plate { border: 0; border-radius: 4px; }
+.qr-mask.best { border-color: var(--ink-3); }
+.qr-mask.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--mark); }
+.qr-blockbar { display: grid; grid-template-columns: 2.6em minmax(0, 1fr) 3.4em; align-items: center; gap: 8px; font-size: var(--t-xs); }
+.qr-blockbar .qr-over { color: var(--bad); font-weight: 700; }
+.qr-steps { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; font-size: var(--t-sm); }
+.qr-scanstage { position: relative; min-height: 220px; background: var(--sunken); border-radius: var(--r-md); overflow: hidden; display: grid; place-items: center; }
+.qr-scanframe { display: none; position: relative; width: 100%; max-width: 480px; line-height: 0; grid-area: 1 / 1; }
+.qr-scanframe canvas { width: 100%; height: auto; display: block; }
+.qr-scanstage.has-image .qr-scanframe { display: block; }
+.qr-scanstage.has-image .qr-scanhint { display: none; }
+.qr-overlay { position: absolute; inset: 0; pointer-events: none; }
+.qr-overlay svg { width: 100%; height: 100%; display: block; }
+.qr-ov-line { fill: none; stroke: var(--mark); stroke-width: 3; vector-effect: non-scaling-stroke; }
+.qr-ov-shadow { fill: none; stroke: #000; stroke-opacity: .45; stroke-width: 6; vector-effect: non-scaling-stroke; }
+.qr-scanhint { grid-area: 1 / 1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px; text-align: center; color: var(--ink-3); font-size: var(--t-sm); max-width: 34ch; }
+.qr-scanhint svg { width: 34px; height: 34px; }
+.qr-scanstage.live { outline: 2px solid var(--mark); outline-offset: -2px; }
+
+/* A module on its own (qr.html): no rail, a slim top bar, the page scrolls normally */
+.solo-shell { min-height: 100%; display: flex; flex-direction: column; }
+.solo-top { display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top, 0px)) 20px 10px; border-bottom: 1px solid var(--line); background: var(--surface); position: sticky; top: 0; z-index: 5; }
+.solo-top .actions { margin-left: auto; display: flex; gap: 6px; }
+.solo-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+.solo-mark svg { width: 30px; height: 30px; display: block; }
+.solo-brand b { display: block; font: 700 var(--t-lg)/1.1 var(--f-display); }
+.solo-brand small { display: block; font: 500 var(--t-xs)/1.2 var(--f-mono); color: var(--ink-3); }
+.solo-main { flex: 1; overflow: visible; }
+.solo .page-head > div:first-child { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.solo .page-head .actions { margin-left: 0; }
+@media (max-width: 860px) { .solo-top { padding-left: 16px; padding-right: 16px; } .solo-brand small { display: none; } }
