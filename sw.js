@@ -1,11 +1,12 @@
 // Bench service worker: cache-first app shell so Bench opens offline once installed.
-const CACHE = 'bench-v1';
+const CACHE = 'bench-v3';
 const SHELL = [
-  './', 'index.html', 'css/bench.css', 'manifest.webmanifest', 'assets/icon.svg',
-  'js/core/markdown.js', 'js/core/quickadd.js', 'js/core/ledger.js', 'js/core/color.js', 'js/core/easing.js', 'js/core/tools.js', 'js/core/kit.js',
-  'js/app.js', 'js/seed.js',
+  './', 'index.html', 'qr.html', 'css/bench.css', 'manifest.webmanifest', 'qr.webmanifest', 'assets/icon.svg', 'assets/qr-icon.svg',
+  'js/core/markdown.js', 'js/core/quickadd.js', 'js/core/ledger.js', 'js/core/color.js', 'js/core/easing.js', 'js/core/tools.js',
+  'js/core/qr.js', 'js/core/qrscan.js', 'js/core/qrpayload.js', 'js/core/qrlearn.js', 'js/core/kit.js',
+  'js/app.js', 'js/solo.js', 'js/seed.js',
   'js/modules/today.js', 'js/modules/tasks.js', 'js/modules/notes.js', 'js/modules/focus.js', 'js/modules/gamelab.js',
-  'js/modules/toolbox.js', 'js/modules/ledger.js', 'js/modules/trips.js', 'js/modules/settings.js',
+  'js/modules/toolbox.js', 'js/modules/qr.js', 'js/modules/ledger.js', 'js/modules/trips.js', 'js/modules/settings.js',
 ];
 
 self.addEventListener('install', e => {

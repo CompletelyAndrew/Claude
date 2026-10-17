@@ -205,3 +205,288 @@ test('easing: inOut curves map to the right engine names', () => {
   assert.match(s.godot, /EASE_IN_OUT/);
   assert.match(s.unity, /Ease\.InOutQuad/);
 });
+
+// ---- QR -------------------------------------------------------------------------
+const qr = require('../js/core/qr.js');
+const qrp = require('../js/core/qrpayload.js');
+const qrl = require('../js/core/qrlearn.js');
+
+test('qr: HELLO WORLD 1-M matches the published codewords', () => {
+  const e = qr.encode('HELLO WORLD', { ec: 'M' });
+  assert.equal(e.version, 1);
+  assert.equal(e.mode, 'alnum');
+  assert.deepEqual(e.data, [32, 91, 11, 120, 209, 114, 220, 77, 67, 64, 236, 17, 236, 17, 236, 17]);
+  assert.deepEqual(e.blocks[0].ecc, [196, 35, 39, 119, 235, 215, 231, 226, 93, 23]);
+});
+
+test('qr: format and version BCH words', () => {
+  assert.equal(qr.formatBits('L', 0).toString(2).padStart(15, '0'), '111011111000100');
+  assert.equal(qr.formatBits('M', 0).toString(2).padStart(15, '0'), '101010000010010');
+  assert.equal(qr.formatBits('Q', 0).toString(2).padStart(15, '0'), '011010101011111');
+  assert.equal(qr.formatBits('H', 7).toString(2).padStart(15, '0'), '000100000111011');
+  assert.equal(qr.versionBits(7), 0x07c94);
+  assert.equal(qr.versionBits(40), 0x28c69);
+  assert.deepEqual(qr.readFormat(qr.formatBits('Q', 5) ^ 0b100000010000001), { ec: 'Q', mask: 5, distance: 3 });
+});
+
+test('qr: capacities match the ISO table', () => {
+  assert.equal(qr.capacity(1, 'L', 'numeric'), 41);
+  assert.equal(qr.capacity(1, 'H', 'alnum'), 10);
+  assert.equal(qr.capacity(10, 'M', 'byte'), 213);
+  assert.equal(qr.capacity(40, 'L', 'byte'), 2953);
+  assert.equal(qr.capacity(40, 'H', 'numeric'), 3057);
+  assert.deepEqual(qr.alignmentPositions(32), [6, 34, 60, 86, 112, 138]);
+  for (let v = 1; v <= 40; v++) for (const ec of 'LMQH') {
+    const blocks = qr.blockLayout(v, ec);
+    assert.equal(blocks.reduce((a, b) => a + b.data + b.ecc, 0), qr.totalCodewords(v));
+  }
+});
+
+test('qr: encode → decode round trips across modes, versions and levels', () => {
+  const texts = ['0123456789', 'HTTPS://EXAMPLE.COM/A', 'https://example.com/menu?table=12', 'Ünïcødé ✓', 'x'.repeat(400), '7'.repeat(2000)];
+  for (const t of texts) for (const ec of 'LMQH') {
+    let e;
+    try { e = qr.encode(t, { ec }); } catch (err) { continue; }
+    const d = qr.decodeMatrix(e.modules);
+    assert.ok(d.ok, `${t.slice(0, 10)} ${ec}: ${d.error}`);
+    assert.equal(d.text, t);
+    assert.equal(d.ec, ec);
+    assert.equal(d.mask, e.mask);
+  }
+  for (let m = 0; m < 8; m++) assert.equal(qr.decodeMatrix(qr.encode('MASK', { mask: m }).modules).mask, m);
+  assert.throws(() => qr.encode('x'.repeat(3000), { ec: 'H' }));
+});
+
+test('qr: roles cover every module', () => {
+  const e = qr.encode('https://example.com', { ec: 'Q', version: 7 });
+  const count = r => e.role.filter(x => x === qr.ROLE[r]).length;
+  assert.equal(count('finder'), 3 * 49);
+  assert.equal(count('version'), 36);
+  assert.equal(count('format'), 30);
+  assert.equal(count('dark'), 1);
+  assert.equal(count('alignment'), 6 * 25);
+  const dataModules = [...e.codeword].filter(c => c >= 0).length;
+  assert.equal(dataModules, qr.totalCodewords(7) * 8);
+});
+
+test('qr: Reed–Solomon repairs up to its limit and refuses past it', () => {
+  const data = Array.from({ length: 20 }, (_, i) => (i * 37 + 11) & 255);
+  const n = 10;
+  const clean = data.concat(qr.rsEncode(data, n));
+  for (let errs = 0; errs <= n / 2; errs++) {
+    const cw = clean.slice();
+    for (let k = 0; k < errs; k++) cw[(k * 7 + 3) % cw.length] ^= 0x5a + k;
+    const fixed = qr.rsCorrect(cw, n);
+    assert.equal(fixed.length, errs);
+    assert.deepEqual(cw, clean);
+  }
+  const broken = clean.slice();
+  for (let k = 0; k < 6; k++) broken[k * 4] ^= 0xff;
+  const res = qr.rsCorrect(broken, n);
+  assert.ok(res === null || broken.join() !== clean.join());
+});
+
+test('qr: damaged symbols still decode; format copy can be lost', () => {
+  const e = qr.encode('https://bench.example/qr?lesson=4', { ec: 'H' });
+  const m = e.modules.slice();
+  // Wipe a centred square, like a logo
+  const c = Math.floor(e.size / 2);
+  for (let y = c - 3; y <= c + 3; y++) for (let x = c - 3; x <= c + 3; x++) m[y * e.size + x] = 0;
+  // and scratch five bits of the first format copy (flipping all 15 would make another valid word)
+  for (const [x, y] of qr.formatPositions(e.size)[0].slice(0, 5)) m[y * e.size + x] ^= 1;
+  const d = qr.decodeMatrix(m);
+  assert.ok(d.ok, d.error);
+  assert.equal(d.text, e.text);
+  assert.ok(d.corrected > 0);
+  assert.equal(d.formatCopy, 1);
+  assert.equal(qr.decodeMatrix(new Uint8Array(22 * 22)).stage, 'size');
+});
+
+test('qrpayload: types and fields', () => {
+  const wifi = qrp.classify('WIFI:T:WPA;S:My\\;Home;P:p@ss;;');
+  assert.equal(wifi.type, 'wifi');
+  assert.deepEqual(wifi.fields.slice(0, 3), [['Network', 'My;Home'], ['Security', 'WPA'], ['Password', 'p@ss']]);
+  assert.equal(qrp.classify(qrp.build.wifi({ ssid: 'Cafe', auth: 'none' })).flags[0].code, 'open');
+  const card = qrp.classify(qrp.build.contact({ name: 'Ada Example', phone: '+1 555', email: 'ada@x.io' }));
+  assert.equal(card.type, 'vcard');
+  assert.ok(card.action.includes('Ada Example'));
+  assert.equal(qrp.classify('MECARD:N:Example,Ada;TEL:123;;').type, 'mecard');
+  assert.equal(qrp.classify('geo:51.5007,-0.1246?q=Big%20Ben').fields[2][1], 'Big Ben');
+  assert.equal(qrp.classify('SMSTO:12345:STOP').flags[0].code, 'shortcode');
+  assert.equal(qrp.classify('mailto:a@b.co?subject=Hi').fields[1][1], 'Hi');
+  assert.equal(qrp.classify('otpauth://totp/Acme:ada?secret=JBSWY3DPEHPK3PXP&issuer=Acme').type, 'otp');
+  assert.equal(qrp.classify('bitcoin:bc1qxyz?amount=0.01').type, 'crypto');
+  assert.equal(qrp.classify('upi://pay?pa=shop@bank&pn=Shop&am=50').fields[0][1], 'Shop');
+  assert.equal(qrp.classify('BCD\n002\n1\nSCT\nBICXX\nPayee Ltd\nDE89370400440532013000\nEUR12.50').type, 'epc');
+  assert.equal(qrp.classify('BEGIN:VEVENT\nSUMMARY:Launch\nDTSTART:20261020T180000\nEND:VEVENT').fields[1][1], '2026-10-20 18:00');
+  assert.equal(qrp.classify('4006381333931').type, 'gtin');
+  assert.equal(qrp.classify('4006381333932').type, 'text');
+  assert.equal(qrp.classify('https://id.gs1.org/01/09506000134352').kind, 'product');
+  assert.equal(qrp.classify('https://apps.apple.com/app/id123').kind, 'app-store');
+  assert.equal(qrp.classify('Just a note').type, 'text');
+});
+
+test('qrpayload: safety flags', () => {
+  const codes = t => qrp.classify(t).flags.map(f => f.code);
+  assert.deepEqual(codes('https://example.com/'), []);
+  assert.ok(codes('http://example.com').includes('http'));
+  assert.ok(codes('https://bit.ly/3abc').includes('shortener'));
+  assert.ok(codes('https://qrco.de/bdX1').includes('dynamic'));
+  assert.ok(codes('https://paypal.com@evil.example/login').includes('userinfo'));
+  assert.ok(codes('http://192.168.4.20/pay').includes('ip'));
+  assert.ok(codes('https://pаypal.com').includes('lookalike')); // Cyrillic а
+  assert.ok(codes('https://paypal.com.secure-check.example/').includes('brand'));
+  assert.deepEqual(codes('https://www.paypal.com/'), []);
+  assert.ok(codes('https://parking-pay-verify.com/').includes('lure'));
+  assert.ok(codes('https://files.example/app.apk').includes('download'));
+  assert.ok(codes('https://shop.example/?utm_source=poster').includes('tracking'));
+  assert.equal(qrp.classify('javascript:alert(1)').flags[0].level, 'bad');
+});
+
+test('qrlearn: Leitner boxes, due dates and scaffolding', () => {
+  let s = qrl.empty();
+  const day = '2026-10-17';
+  assert.equal(qrl.nextSkill(s, day), 'anatomy.finder');
+  assert.equal(qrl.scaffold(s, ['anatomy.finder']), 'explain');
+  for (let i = 0; i < 4; i++) s = qrl.record(s, 'anatomy.finder', true, qrl.addDays(day, i));
+  assert.equal(s.skills['anatomy.finder'].box, 4);
+  assert.equal(s.skills['anatomy.finder'].due, qrl.addDays(qrl.addDays(day, 3), 8));
+  assert.equal(qrl.scaffold(s, ['anatomy.finder']), 'hide');
+  assert.equal(qrl.scaffold(s, ['anatomy.finder'], 'explain'), 'explain');
+  assert.equal(qrl.streak(s, qrl.addDays(day, 3)), 4);
+  assert.equal(qrl.streak(s, qrl.addDays(day, 5)), 0);
+  s = qrl.record(s, 'anatomy.finder', false, qrl.addDays(day, 4));
+  assert.equal(s.skills['anatomy.finder'].box, 2);
+  assert.equal(qrl.scaffold(s, ['anatomy.finder']), 'predict');
+  assert.ok(qrl.isDue(s, 'anatomy.finder', qrl.addDays(day, 4)));
+  assert.equal(qrl.addDays('2026-12-31', 1), '2027-01-01');
+  assert.equal(qrl.addDays('2026-03-01', -1), '2026-02-28');
+  assert.equal(qrl.dayDiff('2026-10-17', '2026-11-17'), 31);
+});
+
+test('qrlearn: every drill is answerable and deterministic', () => {
+  for (const s of qrl.SKILLS) for (let seed = 1; seed <= 25; seed++) {
+    const d = qrl.drill(s.id, seed);
+    assert.ok(d.choices.includes(d.answer), `${s.id}#${seed}: answer missing`);
+    assert.equal(new Set(d.choices).size, d.choices.length);
+    const e = qr.encode(d.code.text, d.code);
+    for (const [x, y] of d.highlight) assert.ok(x >= 0 && y >= 0 && x < e.size && y < e.size);
+    if (s.id.startsWith('anatomy.') && s.id !== 'anatomy.quiet') assert.ok(d.highlight.length > 0, s.id);
+    assert.deepEqual(qrl.drill(s.id, seed), d);
+  }
+  // The format-strip drills really are readable from the highlighted modules
+  for (let seed = 1; seed <= 40; seed++) {
+    const d = qrl.drill('cover.ec', seed), e = qr.encode(d.code.text, d.code);
+    const [a, b] = d.highlight.map(([x, y]) => e.modules[y * e.size + x]);
+    assert.equal(qr.EC_BY_BITS[((a ^ 1) << 1) | b], d.answer);
+    const m = qrl.drill('cover.mask', seed), em = qr.encode(m.code.text, m.code);
+    const bits = m.highlight.map(([x, y]) => em.modules[y * em.size + x]);
+    assert.equal(String(((bits[0] ^ 1) << 2) | (bits[1] << 1) | (bits[2] ^ 1)), m.answer);
+  }
+});
+
+// ---- QR scanning: render codes into synthetic photos, then read them back ----------------
+const qrscan = require('../js/core/qrscan.js');
+function photo(e, { W = 360, H = 360, scale = 5, angle = 0, tilt = 0, noise = 0, blur = false, invert = false, gradient = 0, seed = 7 } = {}) {
+  let r = seed;
+  const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  const q = 4, S = e.size + 2 * q, ca = Math.cos(angle), sa = Math.sin(angle);
+  let grey = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let px = x - W / 2, py = y - H / 2;
+    const w = 1 + (tilt * py) / H; // projective tilt, like holding the phone at an angle
+    px /= w; py /= w;
+    const ux = (ca * px + sa * py) / scale + S / 2 - q, uy = (-sa * px + ca * py) / scale + S / 2 - q;
+    const mx = Math.floor(ux), my = Math.floor(uy);
+    let dark = mx >= 0 && my >= 0 && mx < e.size && my < e.size && e.modules[my * e.size + mx] === 1;
+    if (invert) dark = !dark;
+    grey[y * W + x] = (dark ? 35 : 220) * (1 - (gradient * x) / W) + (rnd() - 0.5) * noise;
+  }
+  if (blur) {
+    const g2 = new Float32Array(W * H);
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      let s = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) s += grey[(y + dy) * W + x + dx];
+      g2[y * W + x] = s / 9;
+    }
+    grey = g2;
+  }
+  const data = new Uint8ClampedArray(W * H * 4);
+  for (let i = 0; i < W * H; i++) { data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = grey[i]; data[i * 4 + 3] = 255; }
+  return { width: W, height: H, data };
+}
+
+test('qrscan: reads codes from rotated, tilted, noisy, blurred and inverted photos', () => {
+  const cases = [
+    ['HELLO WORLD', 'M', {}],
+    ['HELLO WORLD', 'M', { angle: Math.PI, tilt: 0.3 }],
+    ['https://bench.example/qr?lesson=3', 'Q', { angle: 0.5 }],
+    ['https://bench.example/qr?lesson=3', 'L', { angle: Math.PI / 2, noise: 70, gradient: 0.5 }],
+    ['WIFI:T:WPA;S:Cafe Luna;P:espresso;;', 'H', { tilt: 0.35, angle: 0.2, blur: true }],
+    ['WIFI:T:WPA;S:Cafe Luna;P:espresso;;', 'M', { invert: true, angle: -0.4 }],
+    ['z'.repeat(200), 'M', { angle: 0.3, scale: 3.6, blur: true }],
+    ['0123456789'.repeat(30), 'L', { scale: 2.6, W: 300, H: 300 }],
+  ];
+  for (const [text, ec, o] of cases) {
+    const e = qr.encode(text, { ec });
+    const res = qrscan.scan(photo(e, o));
+    assert.ok(res.ok, `${text.slice(0, 12)} ${JSON.stringify(o)}: ${res.error}`);
+    assert.equal(res.text, text);
+    assert.equal(res.version, e.version);
+    assert.equal(res.finders.length, 3);
+    assert.equal(res.inverted, !!o.invert);
+  }
+});
+
+test('qrscan: an image without a code fails gracefully', () => {
+  const W = 120, H = 90, data = new Uint8ClampedArray(W * H * 4);
+  for (let i = 0; i < data.length; i += 4) data[i] = data[i + 1] = data[i + 2] = (i * 7919) % 255;
+  const res = qrscan.scan({ width: W, height: H, data });
+  assert.equal(res.ok, false);
+  assert.ok(res.error);
+});
+
+test('qrlearn: damage drills answer from a real decode', () => {
+  for (let seed = 1; seed <= 20; seed++) {
+    const d = qrl.drill('ecc.survive', seed), e = qr.encode(d.code.text, d.code);
+    const m = e.modules.slice();
+    for (const [x, y] of d.flips) m[y * e.size + x] ^= 1;
+    assert.equal(qr.decodeMatrix(m).ok ? 'Yes' : 'No', d.answer);
+  }
+  const e = qr.encode('https://bench.example', { ec: 'M' });
+  assert.ok(qr.bitGroups(e).map(g => g.bits).join('').length === e.bits.capacity);
+  assert.equal(qr.blockDamage(e, e.modules).every(b => b.errors === 0), true);
+});
+
+test('qrlearn: field-guide samples classify as they claim, and the exam covers every level', () => {
+  const typeFor = { wifi: ['wifi'], contact: ['vcard', 'mecard'], email: ['email'], sms: ['sms'], call: ['tel'], map: ['geo'], event: ['event'], otp: ['otp'], pay: ['upi', 'epc'], web: ['url'], app: ['url'], text: ['gtin'] };
+  for (const w of qrl.WILD) assert.ok(typeFor[w.act].includes(qrp.classify(w.text).type), `${w.text.slice(0, 20)} → ${qrp.classify(w.text).type}`);
+  const plan = qrl.examPlan(42);
+  assert.equal(plan.length, 12);
+  assert.equal(new Set(plan.map(q => q.id)).size, 12);
+  for (const lv of [1, 2, 3, 4, 5, 6]) assert.ok(plan.some(q => qrl.skill(q.id).level === lv), `level ${lv} missing`);
+  let s = qrl.recordExam(qrl.empty(), 9, 12, '2026-10-17');
+  assert.equal(s.exam.passed, null);
+  s = qrl.recordExam(s, 11, 12, '2026-10-18');
+  assert.equal(s.exam.passed, '2026-10-18');
+  assert.equal(qrl.record(s, 'safe.owner', true, '2026-10-18').exam.passed, '2026-10-18');
+});
+
+test('qrlearn: hand-decoding drill matches the real mode bits', () => {
+  for (let seed = 1; seed <= 30; seed++) {
+    const d = qrl.drill('safe.handdecode', seed), e = qr.encode(d.code.text, d.code);
+    const bits = e.placement.slice(0, 4).map(i => e.unmasked[i]).join('');
+    assert.equal({ '0001': 'Numeric', '0010': 'Alphanumeric', '0100': 'Byte' }[bits], d.answer);
+  }
+});
+
+test('qrpayload: registered domains and URL parts', () => {
+  assert.equal(qrp.registeredDomain('www.bbc.co.uk'), 'bbc.co.uk');
+  assert.equal(qrp.registeredDomain('paypal.com.secure-login.example'), 'secure-login.example');
+  assert.equal(qrp.registeredDomain('10.0.0.1'), '10.0.0.1');
+  const p = qrp.urlParts('https://apple.com@id-verify.example/x?y=1');
+  assert.deepEqual(p.parts.map(x => x.kind), ['scheme', 'userinfo', 'owner', 'path', 'query']);
+  assert.equal(p.owner, 'id-verify.example');
+  assert.equal(qrp.verdict(qrp.classify('https://login.microsoftonline.com/')), 'fine');
+  assert.equal(qrp.verdict(qrp.classify('https://paypal-verify.com/')), 'danger');
+});

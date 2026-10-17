@@ -18,7 +18,7 @@ if (!existsSync(file)) { console.error('Run `npm run build` first.'); process.ex
 const shots = join(root, 'dist', 'shots');
 mkdirSync(shots, { recursive: true });
 
-const MODULES = ['today', 'tasks', 'notes', 'focus', 'gamelab', 'toolbox', 'ledger', 'trips', 'settings'];
+const MODULES = ['today', 'tasks', 'notes', 'focus', 'gamelab', 'toolbox', 'qr', 'ledger', 'trips', 'settings'];
 const failures = [];
 const fail = msg => { failures.push(msg); console.log('  ✗ ' + msg); };
 const ok = msg => console.log('  ✓ ' + msg);
@@ -117,6 +117,82 @@ for (const [label, viewport, scheme] of [['desktop-light', { width: 1360, height
     }
     ok('Toolbox tools render');
 
+    // QR: every tab renders, a drill answer is recorded, Make's code decodes back to its contents
+    await page.evaluate(() => { location.hash = 'qr'; });
+    await page.waitForTimeout(200);
+    for (const t of ['Learn', 'Scan', 'Inspect', 'Make', 'Path']) {
+      await page.getByRole('tab', { name: t }).click();
+      await page.waitForTimeout(200);
+      await page.screenshot({ path: join(shots, `qr-${t.toLowerCase()}.png`), fullPage: true });
+    }
+    // Every lesson renders
+    await page.getByRole('tab', { name: 'Learn' }).click();
+    for (const n of [2, 4, 3]) {
+      await page.locator(`#qr-level-${n}`).click();
+      await page.waitForTimeout(250);
+      await page.screenshot({ path: join(shots, `qr-level-${n}.png`), fullPage: true });
+    }
+    await page.locator('#qr-place-play').click();
+    await page.waitForTimeout(700);
+    await page.locator('#qr-level-4').click();
+    await page.locator('#qr-ecc-blob').click();
+    await page.locator('#qr-rs-0').click();
+    if (!(await page.locator('.qr-rs + .row .chip.good').count())) fail('QR Reed–Solomon demo should repair one byte'); else ok('QR lessons 2–4 render and repair');
+    // Levels 5 and 6, hand decoding, and a full exam
+    await page.locator('#qr-level-5').click();
+    await page.locator('#qr-guide-money').click();
+    await page.screenshot({ path: join(shots, 'qr-level-5.png'), fullPage: true });
+    await page.locator('#qr-level-6').click();
+    for (let i = 0; i < 3; i++) await page.locator('#qr-hand-next').click();
+    const handText = await page.locator('#qr-hand-next').evaluate(b => b.closest('.stack').textContent);
+    if (!/= \d+ digits follow/.test(handText)) fail('QR hand-decode should reach the count step: ' + handText); else ok('QR hand-decode walks the bits');
+    const answer = await page.evaluate(() => { const qrs = [...document.querySelectorAll('.qr-plate svg')]; return qrs.length; });
+    if (!answer) fail('QR level 6 rendered no codes');
+    await page.screenshot({ path: join(shots, 'qr-level-6.png'), fullPage: true });
+    await page.locator('#qr-level-exam').click();
+    for (let i = 0; i < 12; i++) { await page.locator('#qr-choice-0').click(); await page.locator('#qr-next').click(); }
+    const exam = await page.evaluate(() => Bench.store.get('qr').exam);
+    if (!exam || exam.attempts !== 1) fail('QR exam was not recorded'); else ok(`QR exam scored and recorded (${Math.round(exam.best * 100)}%)`);
+    // Quiz-me mode: Inspect asks before it tells, and the answer counts as practice
+    await page.evaluate(() => Bench.store.set('qr:ui', { ...Bench.store.get('qr:ui', {}), explain: 'predict' }));
+    await page.getByRole('tab', { name: 'Inspect' }).click();
+    const before = await page.evaluate(() => Bench.store.get('qr').log.length);
+    await page.locator('#qr-gate-1').click();
+    const after = await page.evaluate(() => Bench.store.get('qr').log.length);
+    if (after !== before + 1) fail('QR Inspect gate should record a practice answer'); else ok('QR tools quiz you in predict mode');
+    await page.evaluate(() => Bench.store.set('qr:ui', { ...Bench.store.get('qr:ui', {}), explain: 'auto' }));
+    await page.getByRole('tab', { name: 'Learn' }).click();
+    await page.locator('#qr-level-1').click();
+    await page.getByRole('tab', { name: 'Learn' }).click();
+    const logBefore = await page.evaluate(() => (Bench.store.get('qr') || { log: [] }).log.length);
+    await page.locator('#qr-choice-0').click();
+    const answered = await page.evaluate(() => (Bench.store.get('qr') || { log: [] }).log.length);
+    if (answered !== logBefore + 1) fail('QR drill answer was not recorded'); else ok('QR drill records an answer');
+    await page.locator('#qr-break').click();
+    await page.locator('#qr-break-ec-H').click();
+    await page.locator('#qr-logo').click();
+    if (!(await page.locator('.qr-stage + div .chip.good').count())) fail('QR with a pasted logo should still read'); else ok('QR break-it lesson decodes live');
+    await page.screenshot({ path: join(shots, 'qr-break.png'), fullPage: true });
+    await page.getByRole('tab', { name: 'Make' }).click();
+    await page.locator('#qr-make-wifi').click();
+    await page.locator('#qr-field-wifi-ssid').fill('Smoke Net');
+    await page.waitForTimeout(300);
+    const roundTrip = await page.evaluate(() => {
+      const s = Bench.store.get('qr:make');
+      const text = Bench.qrpayload.build.wifi(s.values.wifi);
+      return Bench.qr.decodeMatrix(Bench.qr.encode(text, { ec: s.ec }).modules).text === text && text.includes('Smoke Net');
+    });
+    if (!roundTrip) fail('QR Make round trip failed'); else ok('QR Make builds a Wi-Fi code');
+    // Photograph the code Make drew and feed it to the scanner as an uploaded photo
+    const png = await page.locator('.qr-plate').first().screenshot();
+    await page.getByRole('tab', { name: 'Scan' }).click();
+    await page.locator('#qr-photo').setInputFiles({ name: 'code.png', mimeType: 'image/png', buffer: png });
+    await page.waitForSelector('#qr-scan-copy', { timeout: 5000 }).catch(() => null);
+    const scanned = await page.evaluate(() => (Bench.store.get('qr:scans') || [])[0]);
+    if (!scanned || !scanned.t.includes('Smoke Net')) fail('QR scanner did not read the uploaded photo'); else ok('QR scanner reads an uploaded photo');
+    await page.screenshot({ path: join(shots, 'qr-scanned.png'), fullPage: true });
+    await page.evaluate(() => { location.hash = 'today'; });
+
     // Focus timer starts and the nav shows the countdown
     await page.evaluate(() => { location.hash = 'focus'; });
     await page.waitForTimeout(200);
@@ -135,6 +211,31 @@ for (const [label, viewport, scheme] of [['desktop-light', { width: 1360, height
 
   if (errors.length) fail(`${label}: console errors:\n    ` + [...new Set(errors)].join('\n    '));
   else ok('no console errors');
+  await ctx.close();
+}
+
+// The QR Codes module as its own app
+for (const [label, viewport, scheme] of [['desktop-light', { width: 1360, height: 900 }, 'light'], ['phone-dark', { width: 390, height: 844 }, 'dark'], ['phone-light', { width: 390, height: 844 }, 'light']]) {
+  console.log(`\nqr app ${label}`);
+  const qrFile = join(root, 'dist', 'qr.html');
+  if (!existsSync(qrFile)) { fail('dist/qr.html is missing'); break; }
+  const ctx = await browser.newContext({ viewport, colorScheme: scheme, deviceScaleFactor: 1 });
+  await ctx.route(url => !url.href.startsWith('file:'), route => route.abort());
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('console', m => { if (m.type() === 'error' && !/fonts\.(googleapis|gstatic)|ERR_|net::/.test(m.text())) errors.push(m.text()); });
+  await page.goto(pathToFileURL(qrFile).href, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.page h1');
+  for (const t of ['Path', 'Learn', 'Scan', 'Inspect', 'Make']) {
+    await page.getByRole('tab', { name: t }).click();
+    await page.waitForTimeout(200);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    if (overflow > 1) fail(`qr app ${t}: page scrolls sideways by ${overflow}px`);
+    await page.screenshot({ path: join(shots, `qr-app-${label}-${t.toLowerCase()}.png`), fullPage: true });
+  }
+  ok('stand-alone QR app renders every tab');
+  if (errors.length) fail(`qr app ${label}: console errors:\n    ` + [...new Set(errors)].join('\n    ')); else ok('no console errors');
   await ctx.close();
 }
 

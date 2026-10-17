@@ -1,0 +1,11 @@
+{
+  "name": "QR Codes · Bench",
+  "short_name": "QR",
+  "description": "Learn how QR codes work until you can read one like a book cover, then keep it as your scanner and maker.",
+  "start_url": "./qr.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f1f2ee",
+  "theme_color": "#17191c",
+  "icons": [{ "src": "assets/qr-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
