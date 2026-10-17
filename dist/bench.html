@@ -39,6 +39,9 @@
   --bad: #b8322a;
   --bad-soft: #f5dcd9;
   --shadow: 0 1px 0 rgba(23,25,28,.04), 0 6px 20px -12px rgba(23,25,28,.25);
+  /* A QR symbol stays dark-on-light in every theme so phones can scan it off the screen */
+  --qr-on: #111315;
+  --qr-off: #ffffff;
 
   --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --f-body: "Hanken Grotesk", "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
@@ -354,6 +357,64 @@ svg { flex: none; }
 .search-btn kbd, kbd { white-space: nowrap; }
 .chip { cursor: default; }
 button.chip { cursor: pointer; }
+
+/* ---------- QR Codes ---------- */
+.qr-plate { background: var(--qr-off); border: 1px solid var(--line); border-radius: var(--r-md); line-height: 0; width: 100%; max-width: 380px; margin: 0 auto; overflow: hidden; }
+.qr-plate svg { width: 100%; height: auto; display: block; }
+.qr-plate .qr-off { fill: var(--qr-off); }
+.qr-plate .qr-on { fill: var(--qr-on); }
+.qr-plate .qr-hl { fill: var(--mark); }
+.qr-stage .qr-plate { cursor: pointer; }
+.qr-stage.breaking .qr-plate { cursor: crosshair; touch-action: none; }
+.qr-lesson { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.qr-path { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.qr-route { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; counter-reset: lv; }
+.qr-level { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; }
+.qr-level .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.qr-level h3 { font-size: var(--t-lg); }
+.qr-level.now { border-color: var(--ink); }
+.qr-level.later { box-shadow: none; background: transparent; border-style: dashed; }
+.qr-level.later h3, .qr-level.later p { color: var(--ink-3); }
+.qr-level-n { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 var(--t-md)/1 var(--f-display); background: var(--sunken); color: var(--ink-2); }
+.qr-level.now .qr-level-n { background: var(--mark); color: var(--mark-ink); }
+.qr-skills .chip { font-size: 11px; }
+.qr-bar { height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.qr-bar > i { display: block; height: 100%; background: var(--ink); border-radius: 3px; }
+.qr-level.now .qr-bar > i { background: var(--mark); }
+.qr-parts { display: flex; flex-wrap: wrap; gap: 6px; }
+.qr-parts button { border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 5px 11px; font: 600 var(--t-xs)/1.2 var(--f-body); cursor: pointer; }
+.qr-parts button[aria-pressed="true"] { background: var(--mark); border-color: var(--mark); color: var(--mark-ink); }
+.qr-parts button:disabled { opacity: .45; cursor: default; }
+.qr-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.qr-choice { justify-content: center; text-align: center; white-space: normal; min-height: 44px; }
+.qr-choice:disabled { cursor: default; opacity: .7; }
+.qr-choice.right { background: var(--good-soft); border-color: var(--good); color: var(--good); opacity: 1; }
+.qr-choice.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); opacity: 1; }
+.qr-formula { font-size: var(--t-lg); font-weight: 600; background: var(--sunken); border-radius: var(--r-sm); padding: 8px 12px; }
+.qr-table { border-collapse: collapse; font-size: var(--t-sm); width: 100%; }
+.qr-table th, .qr-table td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; }
+.qr-table th { font: 600 var(--t-xs)/1.2 var(--f-mono); color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.qr-bits { width: auto; }
+.qr-bits td { text-align: center; width: 2.4em; }
+.qr-bits td.qr-ec-bit { background: var(--mark-soft); }
+.qr-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+.qr-gallery figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.qr-gallery figcaption { display: flex; flex-direction: column; font-size: var(--t-xs); line-height: 1.35; }
+.qr-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 14px; margin: 14px 0 0; font-size: var(--t-sm); }
+.qr-facts dt { font: 600 var(--t-xs)/1.6 var(--f-mono); color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.qr-facts dd { margin: 0; min-width: 0; }
+.qr-flags > li { padding: 10px 0; align-items: flex-start; }
+.qr-flags .chip { flex: none; }
+.qr-oneline { margin-top: 14px; background: var(--sunken); padding: 8px 12px; border-radius: var(--r-sm); font-size: var(--t-sm); overflow-wrap: anywhere; }
+input[type="range"]#qr-cover-version { width: 100%; accent-color: var(--ink); }
+@media (max-width: 860px) {
+  .qr-lesson, .qr-path { grid-template-columns: minmax(0, 1fr); }
+  .qr-level { flex-wrap: wrap; }
+  .qr-level > .grow { flex-basis: calc(100% - 48px); }
+  .qr-level > .btn { margin-left: 48px; }
+}
+.qr-examples button.chip { border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); font-family: var(--f-body); }
+.qr-examples button.chip:hover { background: var(--sunken); color: var(--ink); }
 
 </style>
 </head>
@@ -1228,6 +1289,1001 @@ window.Bench = window.Bench || {}; window.Bench.SINGLE_FILE = true;
 })(typeof window !== 'undefined' ? window : globalThis);
 
 ;
+// js/core/qr.js
+/* Bench · qr.js
+ * QR Code model 2, versions 1–40: encoder, Reed–Solomon, and a matrix
+ * decoder that keeps every intermediate step so lessons can show them.
+ * Every module also gets a role (finder, timing, format, data …) and the
+ * data codeword it belongs to, which is what the overlays draw from.
+ */
+(function (root) {
+  'use strict';
+
+  // ---- Tables (ISO/IEC 18004), index 0 unused ---------------------------------
+  const EC = {
+    L: { ord: 0, bits: 1, recover: 7 },
+    M: { ord: 1, bits: 0, recover: 15 },
+    Q: { ord: 2, bits: 3, recover: 25 },
+    H: { ord: 3, bits: 2, recover: 30 },
+  };
+  const EC_BY_BITS = ['M', 'L', 'H', 'Q'];
+  const ECC_PER_BLOCK = [
+    [0, 7, 10, 15, 20, 26, 18, 20, 24, 30, 18, 20, 24, 26, 30, 22, 24, 28, 30, 28, 28, 28, 28, 30, 30, 26, 28, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30],
+    [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30, 22, 22, 24, 24, 28, 28, 26, 26, 26, 26, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28],
+    [0, 13, 22, 18, 26, 18, 24, 18, 22, 20, 24, 28, 26, 24, 20, 30, 24, 28, 28, 26, 30, 28, 30, 30, 30, 30, 28, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30],
+    [0, 17, 28, 22, 16, 22, 28, 26, 26, 24, 28, 24, 28, 22, 24, 24, 30, 28, 28, 26, 28, 30, 24, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30],
+  ];
+  const NUM_BLOCKS = [
+    [0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4, 4, 4, 6, 6, 6, 6, 7, 8, 8, 9, 9, 10, 12, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 24, 25],
+    [0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5, 5, 8, 9, 9, 10, 10, 11, 13, 14, 16, 17, 17, 18, 20, 21, 23, 25, 26, 28, 29, 31, 33, 35, 37, 38, 40, 43, 45, 47, 49],
+    [0, 1, 1, 2, 2, 4, 4, 6, 6, 8, 8, 8, 10, 12, 16, 12, 17, 16, 18, 21, 20, 23, 23, 25, 27, 29, 34, 34, 35, 38, 40, 43, 45, 48, 51, 53, 56, 59, 62, 65, 68],
+    [0, 1, 1, 2, 4, 4, 4, 5, 6, 8, 8, 11, 11, 16, 16, 18, 16, 19, 21, 25, 25, 25, 34, 30, 32, 35, 37, 40, 42, 45, 48, 51, 54, 57, 60, 63, 66, 70, 74, 77, 81],
+  ];
+
+  const MODES = {
+    numeric: { bits: 0x1, count: [10, 12, 14] },
+    alnum: { bits: 0x2, count: [9, 11, 13] },
+    byte: { bits: 0x4, count: [8, 16, 16] },
+    kanji: { bits: 0x8, count: [8, 10, 12] },
+    eci: { bits: 0x7 },
+  };
+  const ALNUM = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+  const countBits = (mode, version) => MODES[mode].count[version <= 9 ? 0 : version <= 26 ? 1 : 2];
+
+  // Module roles, in the order lessons introduce them
+  const ROLE = { data: 0, finder: 1, separator: 2, timing: 3, alignment: 4, format: 5, version: 6, dark: 7, remainder: 8 };
+  const ROLE_NAMES = Object.keys(ROLE);
+
+  const sizeOf = v => v * 4 + 17;
+  const versionOf = size => (size - 17) / 4;
+
+  function rawDataModules(v) {
+    let n = (16 * v + 128) * v + 64;
+    if (v >= 2) {
+      const a = Math.floor(v / 7) + 2;
+      n -= (25 * a - 10) * a - 55;
+      if (v >= 7) n -= 36;
+    }
+    return n;
+  }
+  const totalCodewords = v => Math.floor(rawDataModules(v) / 8);
+  const dataCodewords = (v, ec) => totalCodewords(v) - ECC_PER_BLOCK[EC[ec].ord][v] * NUM_BLOCKS[EC[ec].ord][v];
+
+  function blockLayout(v, ec) {
+    const o = EC[ec].ord;
+    const n = NUM_BLOCKS[o][v], ecc = ECC_PER_BLOCK[o][v], total = totalCodewords(v);
+    const shortLen = Math.floor(total / n), numShort = n - (total % n);
+    const blocks = [];
+    for (let i = 0; i < n; i++) blocks.push({ data: shortLen - ecc + (i < numShort ? 0 : 1), ecc });
+    return blocks;
+  }
+
+  function alignmentPositions(v) {
+    if (v === 1) return [];
+    const n = Math.floor(v / 7) + 2;
+    const step = Math.floor((v * 8 + n * 3 + 5) / (n * 4 - 4)) * 2;
+    const out = [6];
+    for (let pos = sizeOf(v) - 7; out.length < n; pos -= step) out.splice(1, 0, pos);
+    return out;
+  }
+
+  // ---- GF(256) and Reed–Solomon ------------------------------------------------------
+  const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+  for (let i = 0, x = 1; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11d; }
+  for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+  const mul = (a, b) => (a && b ? EXP[LOG[a] + LOG[b]] : 0);
+  const div = (a, b) => { if (!b) throw new Error('divide by zero'); return a ? EXP[(LOG[a] + 255 - LOG[b]) % 255] : 0; };
+
+  // Generator with roots α^0 … α^(n-1), highest degree first, leading 1 dropped
+  const genCache = {};
+  function generator(n) {
+    if (genCache[n]) return genCache[n];
+    let g = [1];
+    for (let i = 0; i < n; i++) {
+      const next = new Array(g.length + 1).fill(0);
+      for (let j = 0; j < g.length; j++) { next[j] ^= g[j]; next[j + 1] ^= mul(g[j], EXP[i]); }
+      g = next;
+    }
+    return (genCache[n] = g.slice(1));
+  }
+
+  function rsEncode(data, n) {
+    const g = generator(n), rem = new Array(n).fill(0);
+    for (const b of data) {
+      const f = b ^ rem.shift();
+      rem.push(0);
+      for (let i = 0; i < n; i++) rem[i] ^= mul(g[i], f);
+    }
+    return rem;
+  }
+
+  // Correct a whole block (data + ecc) in place. Returns positions fixed, or null if past repair.
+  function rsCorrect(block, n) {
+    const N = block.length;
+    const S = [];
+    let clean = true;
+    for (let j = 0; j < n; j++) {
+      let s = 0;
+      for (let k = 0; k < N; k++) s = mul(s, EXP[j]) ^ block[k];
+      S.push(s);
+      if (s) clean = false;
+    }
+    if (clean) return [];
+    // Berlekamp–Massey → error locator Λ (lowest degree first)
+    let C = [1], B = [1], L = 0, m = 1, b = 1;
+    for (let i = 0; i < n; i++) {
+      let d = S[i];
+      for (let k = 1; k <= L; k++) d ^= mul(C[k] || 0, S[i - k]);
+      if (d === 0) { m++; continue; }
+      const coef = div(d, b), T = C.slice();
+      const len = Math.max(C.length, B.length + m);
+      while (C.length < len) C.push(0);
+      for (let k = 0; k < B.length; k++) C[k + m] ^= mul(coef, B[k]);
+      if (2 * L <= i) { L = i + 1 - L; B = T; b = d; m = 1; } else m++;
+    }
+    if (L * 2 > n) return null;
+    const evalAt = (p, x) => { let y = 0; for (let k = p.length - 1; k >= 0; k--) y = mul(y, x) ^ p[k]; return y; };
+    // Ω = S·Λ mod x^n
+    const omega = new Array(n).fill(0);
+    for (let i = 0; i < n; i++) for (let k = 0; k <= i && k < C.length; k++) omega[i] ^= mul(C[k], S[i - k]);
+    const deriv = C.map((c, k) => (k % 2 ? c : 0)).slice(1);
+    const fixed = [];
+    for (let p = 0; p < N; p++) {
+      const xInv = EXP[(255 - p) % 255];
+      if (evalAt(C, xInv) !== 0) continue;
+      const den = evalAt(deriv, xInv);
+      if (!den) return null;
+      const e = mul(EXP[p], div(evalAt(omega, xInv), den));
+      const k = N - 1 - p;
+      block[k] ^= e;
+      fixed.push(k);
+    }
+    if (fixed.length !== L) return null;
+    return fixed.sort((a, z) => a - z);
+  }
+
+  // ---- BCH: format and version information -------------------------------------------
+  function formatBits(ec, mask) {
+    const data = (EC[ec].bits << 3) | mask;
+    let rem = data;
+    for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+    return ((data << 10) | rem) ^ 0x5412;
+  }
+  function versionBits(v) {
+    let rem = v;
+    for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1f25);
+    return (v << 12) | rem;
+  }
+  const popcount = x => { let c = 0; while (x) { c += x & 1; x >>>= 1; } return c; };
+  function readFormat(bits) {
+    let best = null;
+    for (const ec of 'LMQH') for (let mask = 0; mask < 8; mask++) {
+      const d = popcount(bits ^ formatBits(ec, mask));
+      if (!best || d < best.distance) best = { ec, mask, distance: d };
+    }
+    return best.distance <= 3 ? best : null;
+  }
+
+  // ---- Masks ---------------------------------------------------------------------------
+  const MASKS = [
+    (x, y) => (x + y) % 2 === 0,
+    (x, y) => y % 2 === 0,
+    (x, y) => x % 3 === 0,
+    (x, y) => (x + y) % 3 === 0,
+    (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0,
+    (x, y) => ((x * y) % 2) + ((x * y) % 3) === 0,
+    (x, y) => (((x * y) % 2) + ((x * y) % 3)) % 2 === 0,
+    (x, y) => (((x + y) % 2) + ((x * y) % 3)) % 2 === 0,
+  ];
+  const MASK_FORMULAS = ['(x + y) mod 2 = 0', 'y mod 2 = 0', 'x mod 3 = 0', '(x + y) mod 3 = 0', '(⌊x/3⌋ + ⌊y/2⌋) mod 2 = 0', 'xy mod 2 + xy mod 3 = 0', '(xy mod 2 + xy mod 3) mod 2 = 0', '((x + y) mod 2 + xy mod 3) mod 2 = 0'];
+
+  // ---- The empty grid: function patterns and roles -----------------------------------------
+  // Matrix layout: modules[y * size + x], 1 = dark.
+  function skeleton(v) {
+    const size = sizeOf(v), n = size * size;
+    const modules = new Uint8Array(n), role = new Uint8Array(n), fn = new Uint8Array(n);
+    const set = (x, y, dark, r) => { const i = y * size + x; modules[i] = dark ? 1 : 0; role[i] = r; fn[i] = 1; };
+    for (let i = 0; i < size; i++) { set(6, i, i % 2 === 0, ROLE.timing); set(i, 6, i % 2 === 0, ROLE.timing); }
+    for (const [cx, cy] of [[3, 3], [size - 4, 3], [3, size - 4]]) {
+      for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+        const x = cx + dx, y = cy + dy;
+        if (x < 0 || y < 0 || x >= size || y >= size) continue;
+        const d = Math.max(Math.abs(dx), Math.abs(dy));
+        set(x, y, d !== 2 && d !== 4, d === 4 ? ROLE.separator : ROLE.finder);
+      }
+    }
+    const align = alignmentPositions(v), last = align.length - 1;
+    for (let i = 0; i <= last; i++) for (let j = 0; j <= last; j++) {
+      if ((i === 0 && j === 0) || (i === 0 && j === last) || (i === last && j === 0)) continue;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
+        set(align[i] + dx, align[j] + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1, ROLE.alignment);
+    }
+    // Reserve format areas (filled later), the always-dark module, and version blocks
+    for (const [x, y] of formatPositions(size).flat()) set(x, y, false, ROLE.format);
+    set(8, size - 8, true, ROLE.dark);
+    if (v >= 7) {
+      const vb = versionBits(v);
+      for (let i = 0; i < 18; i++) {
+        const bit = (vb >>> i) & 1, a = size - 11 + (i % 3), b = Math.floor(i / 3);
+        set(a, b, bit, ROLE.version); set(b, a, bit, ROLE.version);
+      }
+    }
+    return { version: v, size, modules, role, fn };
+  }
+
+  // Where format bit i (0 = least significant) lives, for both copies
+  function formatPositions(size) {
+    const a = [], b = [];
+    for (let i = 0; i <= 5; i++) a.push([8, i]);
+    a.push([8, 7], [8, 8], [7, 8]);
+    for (let i = 9; i < 15; i++) a.push([14 - i, 8]);
+    for (let i = 0; i < 8; i++) b.push([size - 1 - i, 8]);
+    for (let i = 8; i < 15; i++) b.push([8, size - 15 + i]);
+    return [a, b];
+  }
+
+  // Data modules in placement order: two-column zig-zag from the bottom right
+  function placementOrder(sk) {
+    const { size, fn } = sk, out = [];
+    for (let right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) right = 5;
+      const upward = ((right + 1) & 2) === 0;
+      for (let vert = 0; vert < size; vert++) for (let j = 0; j < 2; j++) {
+        const x = right - j, y = upward ? size - 1 - vert : vert;
+        if (!fn[y * size + x]) out.push(y * size + x);
+      }
+    }
+    return out;
+  }
+
+  function writeFormat(sk, ec, mask) {
+    const bits = formatBits(ec, mask);
+    for (const copy of formatPositions(sk.size)) copy.forEach(([x, y], i) => { sk.modules[y * sk.size + x] = (bits >>> i) & 1; });
+  }
+
+  function applyMask(sk, mask) {
+    const { size, modules, fn } = sk, f = MASKS[mask];
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const i = y * size + x;
+      if (!fn[i] && f(x, y)) modules[i] ^= 1;
+    }
+  }
+
+  // ---- Penalty (ISO 18004 §7.8.3) ------------------------------------------------------------
+  function penalty(modules, size) {
+    const at = (x, y) => modules[y * size + x];
+    let n1 = 0, n2 = 0, n3 = 0, dark = 0;
+    const PAT = [1, 0, 1, 1, 1, 0, 1];
+    for (let pass = 0; pass < 2; pass++) {
+      for (let a = 0; a < size; a++) {
+        let run = 1;
+        const line = [];
+        for (let b = 0; b < size; b++) line.push(pass ? at(a, b) : at(b, a));
+        for (let b = 1; b <= size; b++) {
+          if (b < size && line[b] === line[b - 1]) run++;
+          else { if (run >= 5) n1 += 3 + run - 5; run = 1; }
+        }
+        // Finder-like 1:1:3:1:1 with four light modules on either side (outside the grid counts as light)
+        for (let b = -4; b < size; b++) {
+          const get = k => (k < 0 || k >= size ? 0 : line[k]);
+          let match = true;
+          for (let k = 0; k < 7 && match; k++) if (get(b + k) !== PAT[k]) match = false;
+          if (!match) continue;
+          const lightBefore = [1, 2, 3, 4].every(k => get(b - k) === 0);
+          const lightAfter = [7, 8, 9, 10].every(k => get(b + k) === 0);
+          if (lightBefore) n3 += 40;
+          if (lightAfter) n3 += 40;
+        }
+      }
+    }
+    for (let y = 0; y < size - 1; y++) for (let x = 0; x < size - 1; x++) {
+      const c = at(x, y);
+      if (c === at(x + 1, y) && c === at(x, y + 1) && c === at(x + 1, y + 1)) n2 += 3;
+    }
+    for (let i = 0; i < modules.length; i++) dark += modules[i];
+    const pct = (dark * 100) / modules.length;
+    const n4 = Math.floor(Math.abs(pct - 50) / 5) * 10;
+    return { total: n1 + n2 + n3 + n4, runs: n1, blocks: n2, finderLike: n3, balance: n4, darkPct: pct };
+  }
+
+  // ---- Segments ----------------------------------------------------------------------------------
+  const utf8 = s => Array.from(new TextEncoder().encode(s));
+  function bestMode(text) {
+    if (/^[0-9]*$/.test(text)) return 'numeric';
+    if ([...text].every(c => ALNUM.includes(c))) return 'alnum';
+    return 'byte';
+  }
+  function segmentBits(text, mode, version) {
+    const bits = [];
+    const push = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+    let count;
+    if (mode === 'byte') count = utf8(text).length; else count = text.length;
+    push(MODES[mode].bits, 4);
+    push(count, countBits(mode, version));
+    if (mode === 'numeric') for (let i = 0; i < text.length; i += 3) { const g = text.slice(i, i + 3); push(+g, g.length * 3 + 1); }
+    else if (mode === 'alnum') for (let i = 0; i < text.length; i += 2) {
+      if (i + 1 < text.length) push(ALNUM.indexOf(text[i]) * 45 + ALNUM.indexOf(text[i + 1]), 11);
+      else push(ALNUM.indexOf(text[i]), 6);
+    }
+    else for (const b of utf8(text)) push(b, 8);
+    return { bits, count };
+  }
+
+  // How many characters of a mode fit in a version/EC (handy for capacity lessons)
+  function capacity(v, ec, mode = 'byte') {
+    const avail = dataCodewords(v, ec) * 8 - 4 - countBits(mode, v);
+    if (mode === 'numeric') { const g = Math.floor(avail / 10), r = avail % 10; return g * 3 + (r >= 7 ? 2 : r >= 4 ? 1 : 0); }
+    if (mode === 'alnum') { const g = Math.floor(avail / 11), r = avail % 11; return g * 2 + (r >= 6 ? 1 : 0); }
+    if (mode === 'kanji') return Math.floor(avail / 13);
+    return Math.floor(avail / 8);
+  }
+
+  // ---- Encode ------------------------------------------------------------------------------------------
+  // encode(text, { ec: 'M', mask: 'auto'|0-7, minVersion, version, mode })
+  function encode(text, opts = {}) {
+    text = String(text);
+    const ec = opts.ec || 'M';
+    if (!EC[ec]) throw new Error(`Unknown error-correction level ${ec}`);
+    const mode = opts.mode || bestMode(text);
+    let version = null, seg = null;
+    for (let v = opts.version || opts.minVersion || 1; v <= (opts.version || 40); v++) {
+      const s = segmentBits(text, mode, v);
+      if (s.count < 2 ** countBits(mode, v) && s.bits.length <= dataCodewords(v, ec) * 8) { version = v; seg = s; break; }
+    }
+    if (!version) throw new Error(opts.version ? `Too long for version ${opts.version}-${ec}` : 'Too long for any QR code at this error-correction level');
+    const capBits = dataCodewords(version, ec) * 8;
+    const bits = seg.bits.slice();
+    const terminator = Math.min(4, capBits - bits.length);
+    for (let i = 0; i < terminator; i++) bits.push(0);
+    while (bits.length % 8) bits.push(0);
+    const dataLen = bits.length / 8;
+    const data = [];
+    for (let i = 0; i < bits.length; i += 8) data.push(bits.slice(i, i + 8).reduce((a, b) => (a << 1) | b, 0));
+    for (let pad = 0xec; data.length < capBits / 8; pad ^= 0xec ^ 0x11) data.push(pad);
+
+    // Split into blocks, add EC codewords, interleave
+    const layout = blockLayout(version, ec);
+    let k = 0;
+    const blocks = layout.map(b => { const d = data.slice(k, (k += b.data)); return { data: d, ecc: rsEncode(d, b.ecc) }; });
+    const stream = [], owner = [];
+    const maxData = Math.max(...layout.map(b => b.data));
+    for (let i = 0; i < maxData; i++) blocks.forEach((b, bi) => { if (i < b.data.length) { stream.push(b.data[i]); owner.push({ block: bi, index: i, ecc: false }); } });
+    for (let i = 0; i < layout[0].ecc; i++) blocks.forEach((b, bi) => { stream.push(b.ecc[i]); owner.push({ block: bi, index: i, ecc: true }); });
+
+    // Place
+    const sk = skeleton(version);
+    const order = placementOrder(sk);
+    const codeword = new Int16Array(sk.size * sk.size).fill(-1);
+    order.forEach((idx, i) => {
+      const cw = i >> 3;
+      if (cw < stream.length) { sk.modules[idx] = (stream[cw] >>> (7 - (i & 7))) & 1; codeword[idx] = cw; }
+      else sk.role[idx] = ROLE.remainder;
+    });
+    const unmasked = sk.modules.slice();
+
+    // Pick the mask with the lowest penalty unless one was asked for
+    const penalties = [];
+    let mask = opts.mask === 'auto' || opts.mask == null ? -1 : +opts.mask;
+    for (let m = 0; m < 8; m++) {
+      const trial = { ...sk, modules: unmasked.slice() };
+      applyMask(trial, m); writeFormat(trial, ec, m);
+      penalties.push(penalty(trial.modules, sk.size));
+    }
+    if (mask < 0) mask = penalties.reduce((best, p, m) => (p.total < penalties[best].total ? m : best), 0);
+    applyMask(sk, mask);
+    writeFormat(sk, ec, mask);
+
+    return {
+      text, version, size: sk.size, ec, mask, mode,
+      modules: sk.modules, role: sk.role, codeword, unmasked,
+      segments: [{ mode, count: seg.count, bits: seg.bits.length, text }],
+      bits: { segment: seg.bits.length, terminator, padBits: dataLen * 8 - seg.bits.length - terminator, padBytes: data.length - dataLen, capacity: capBits },
+      data, blocks, stream, owner, penalties, placement: order,
+      format: formatBits(ec, mask),
+    };
+  }
+
+  // ---- Decode a module grid ------------------------------------------------------------------------------
+  // grid: Uint8Array/array of 0|1 (row-major) or array of rows. Returns { ok, text, steps… } or { ok:false, error, stage }.
+  function decodeMatrix(grid, sizeHint) {
+    let size, modules;
+    if (Array.isArray(grid) && Array.isArray(grid[0])) { size = grid.length; modules = Uint8Array.from(grid.flat(), b => (b ? 1 : 0)); }
+    else { modules = Uint8Array.from(grid, b => (b ? 1 : 0)); size = sizeHint || Math.round(Math.sqrt(modules.length)); }
+    const version = versionOf(size);
+    if (!Number.isInteger(version) || version < 1 || version > 40) return { ok: false, stage: 'size', error: `A ${size}×${size} grid isn't a QR size (21, 25, 29 … 177).` };
+    const at = (x, y) => modules[y * size + x];
+
+    // Format: try each copy, then both against all 32 valid words
+    const copies = formatPositions(size).map(copy => copy.reduce((acc, [x, y], i) => acc | (at(x, y) << i), 0));
+    let format = null, formatCopy = -1;
+    copies.forEach((bits, i) => { const f = readFormat(bits); if (f && (!format || f.distance < format.distance)) { format = f; formatCopy = i; } });
+    if (!format) return { ok: false, stage: 'format', error: 'Both copies of the format information are too damaged to read.', copies };
+
+    const sk = skeleton(version);
+    const order = placementOrder(sk);
+    const f = MASKS[format.mask];
+    const raw = [];
+    let byte = 0;
+    order.forEach((idx, i) => {
+      const x = idx % size, y = Math.floor(idx / size);
+      byte = (byte << 1) | (at(x, y) ^ (f(x, y) ? 1 : 0));
+      if ((i & 7) === 7) { raw.push(byte); byte = 0; }
+    });
+    const total = totalCodewords(version);
+    raw.length = total;
+
+    // De-interleave
+    const layout = blockLayout(version, format.ec);
+    const blocks = layout.map(b => ({ data: [], ecc: [], len: b.data, n: b.ecc }));
+    let p = 0;
+    const maxData = Math.max(...layout.map(b => b.data));
+    for (let i = 0; i < maxData; i++) blocks.forEach(b => { if (i < b.len) b.data.push(raw[p++]); });
+    for (let i = 0; i < layout[0].ecc; i++) blocks.forEach(b => { b.ecc.push(raw[p++]); });
+
+    const corrections = [];
+    const data = [];
+    for (let bi = 0; bi < blocks.length; bi++) {
+      const b = blocks[bi], cw = b.data.concat(b.ecc);
+      const fixed = rsCorrect(cw, b.n);
+      if (fixed === null) return { ok: false, stage: 'ecc', error: `Block ${bi + 1} of ${blocks.length} has more damage than its ${b.n} error-correction codewords can repair.`, version, ec: format.ec, mask: format.mask, block: bi };
+      corrections.push(fixed.length);
+      data.push(...cw.slice(0, b.len));
+    }
+
+    const parsed = parseSegments(data, version);
+    if (!parsed.ok) return { ...parsed, version, ec: format.ec, mask: format.mask };
+    return {
+      ok: true, text: parsed.text, segments: parsed.segments, version, size, ec: format.ec, mask: format.mask,
+      formatDistance: format.distance, formatCopy, corrections, corrected: corrections.reduce((a, b) => a + b, 0),
+      capacity: corrections.map((_, i) => Math.floor(blocks[i].n / 2)), data, raw,
+    };
+  }
+
+  function parseSegments(bytes, version) {
+    let pos = 0;
+    const total = bytes.length * 8;
+    const read = n => { let v = 0; for (let i = 0; i < n; i++) { v = (v << 1) | ((bytes[pos >> 3] >>> (7 - (pos & 7))) & 1); pos++; } return v; };
+    const segments = [];
+    let text = '', eci = null;
+    while (pos + 4 <= total) {
+      const m = read(4);
+      if (m === 0) break;
+      const mode = Object.keys(MODES).find(k => MODES[k].bits === m);
+      if (!mode) return { ok: false, stage: 'data', error: `Unknown mode indicator ${m.toString(2).padStart(4, '0')}.` };
+      if (mode === 'eci') {
+        let v = read(8);
+        if ((v & 0xc0) === 0x80) v = ((v & 0x3f) << 8) | read(8);
+        else if ((v & 0xe0) === 0xc0) v = ((v & 0x1f) << 16) | read(16);
+        eci = v; segments.push({ mode, value: v });
+        continue;
+      }
+      const count = read(countBits(mode, version));
+      let s = '';
+      if (mode === 'numeric') {
+        for (let left = count; left > 0; left -= 3) { const n = Math.min(3, left); s += String(read(n * 3 + 1)).padStart(n, '0'); }
+      } else if (mode === 'alnum') {
+        for (let left = count; left > 0; left -= 2) {
+          if (left >= 2) { const v = read(11); s += ALNUM[Math.floor(v / 45)] + ALNUM[v % 45]; } else s += ALNUM[read(6)];
+        }
+      } else if (mode === 'byte') {
+        const b = [];
+        for (let i = 0; i < count; i++) b.push(read(8));
+        s = decodeBytes(b, eci);
+      } else {
+        // Kanji: 13-bit Shift JIS values. Without a Shift JIS table we show the code points.
+        const codes = [];
+        for (let i = 0; i < count; i++) { const v = read(13); const c = Math.floor(v / 0xc0) * 0x100 + (v % 0xc0); codes.push(c + (c + 0x8140 <= 0x9ffc ? 0x8140 : 0xc140)); }
+        s = codes.map(c => `[SJIS ${c.toString(16)}]`).join('');
+      }
+      if (pos > total) return { ok: false, stage: 'data', error: 'The data ran past the end of the code.' };
+      segments.push({ mode, count, text: s });
+      text += s;
+    }
+    return { ok: true, text, segments };
+  }
+
+  function decodeBytes(bytes, eci) {
+    const u8 = Uint8Array.from(bytes);
+    if (eci === 3 || eci === 1) return Array.from(u8, b => String.fromCharCode(b)).join(''); // ISO-8859-1
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(u8); }
+    catch (e) { return Array.from(u8, b => String.fromCharCode(b)).join(''); }
+  }
+
+  const api = {
+    EC, EC_BY_BITS, MODES, ALNUM, ROLE, ROLE_NAMES, MASKS, MASK_FORMULAS,
+    sizeOf, versionOf, totalCodewords, dataCodewords, blockLayout, alignmentPositions, capacity, countBits, bestMode,
+    rsEncode, rsCorrect, formatBits, versionBits, readFormat, formatPositions, penalty, skeleton, placementOrder,
+    encode, decodeMatrix, parseSegments,
+  };
+  root.Bench = root.Bench || {};
+  root.Bench.qr = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+;
+// js/core/qrpayload.js
+/* Bench · qrpayload.js
+ * What a QR payload is and where it leads: classify(text) names the type,
+ * pulls out its fields, says what a phone will do with it, and raises
+ * the safety flags a careful reader would. Builders go the other way.
+ */
+(function (root) {
+  'use strict';
+
+  const SHORTENERS = ['bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'ow.ly', 'is.gd', 'buff.ly', 'rebrand.ly', 'cutt.ly', 's.id', 'tiny.cc', 'rb.gy', 'shorturl.at', 't.ly', 'bl.ink', 'lnkd.in', 'shorturl.com', 'v.gd', 'qr.net', 'urlz.fr'];
+  // Hosted "dynamic QR" services: the printed code points at them and they forward on
+  const DYNAMIC = ['qrco.de', 'qr-code-generator.com', 'me-qr.com', 'qrfy.com', 'qrcodechimp.com', 'beaconstac.com', 'qr.page', 'l.ead.me', 'qrs.ly', 'scan.page', 'linktr.ee', 'uqr.me', 'qrcode-monkey.com'];
+  const RISKY_FILES = /\.(apk|exe|msi|dmg|pkg|scr|bat|cmd|jar|vbs|ps1|iso)$/i;
+  const NEW_TLDS = /\.(zip|mov|top|xyz|click|country|gq|tk|ml|cf|work|rest|cam)$/i;
+  const TRACKING = /^(utm_\w+|fbclid|gclid|dclid|msclkid|mc_eid|mc_cid|igshid|yclid|_hs\w+|ref|src|campaign)$/i;
+  const BRANDS = ['paypal', 'apple', 'microsoft', 'google', 'amazon', 'netflix', 'chase', 'wellsfargo', 'usps', 'fedex', 'dhl', 'irs', 'hmrc'];
+  const LURES = /(login|verify|secure|account|update|parking|payment|refund|wallet)/;
+
+  const flag = (level, code, msg) => ({ level, code, msg });
+
+  // ---- Field parsers --------------------------------------------------------------
+  // MECARD / WIFI style: KEY:value;KEY:value;; with \ escapes
+  function keyed(body) {
+    const out = {};
+    let key = '', val = '', inKey = true;
+    for (let i = 0; i < body.length; i++) {
+      const c = body[i];
+      if (c === '\\' && i + 1 < body.length) { (inKey ? (key += body[++i]) : (val += body[++i])); continue; }
+      if (inKey && c === ':') { inKey = false; continue; }
+      if (!inKey && c === ';') { if (key) out[key.toUpperCase()] = out[key.toUpperCase()] ? out[key.toUpperCase()] + ', ' + val : val; key = ''; val = ''; inKey = true; continue; }
+      if (inKey) key += c; else val += c;
+    }
+    if (key && !inKey) out[key.toUpperCase()] = val;
+    return out;
+  }
+
+  // vCard / iCalendar: unfold lines, NAME;PARAMS:value
+  function lines(text) {
+    const out = {};
+    const unfolded = text.replace(/\r?\n[ \t]/g, '');
+    for (const line of unfolded.split(/\r?\n/)) {
+      const m = line.match(/^([A-Za-z-]+)(?:;[^:]*)?:(.*)$/);
+      if (!m) continue;
+      const k = m[1].toUpperCase();
+      const v = m[2].replace(/\\n/gi, ' ').replace(/\\([,;\\])/g, '$1').trim();
+      out[k] = out[k] ? out[k] + ', ' + v : v;
+    }
+    return out;
+  }
+
+  function query(qs) {
+    const out = {};
+    for (const part of String(qs || '').replace(/^\?/, '').split('&')) {
+      if (!part) continue;
+      const [k, v = ''] = part.split('=');
+      try { out[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' ')); } catch (e) { out[k] = v; }
+    }
+    return out;
+  }
+
+  function gtinValid(digits) {
+    if (!/^\d{8}$|^\d{12,14}$/.test(digits)) return false;
+    const d = digits.split('').map(Number), check = d.pop();
+    const sum = d.reverse().reduce((s, n, i) => s + n * (i % 2 ? 1 : 3), 0);
+    return (10 - (sum % 10)) % 10 === check;
+  }
+
+  function icsDate(s) {
+    const m = String(s || '').match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2}))?/);
+    return m ? `${m[1]}-${m[2]}-${m[3]}${m[4] ? ` ${m[4]}:${m[5]}` : ''}` : s;
+  }
+
+  // ---- URLs ---------------------------------------------------------------------------
+  function urlInfo(raw) {
+    const flags = [];
+    let u;
+    try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : 'https://' + raw); }
+    catch (e) { return null; }
+    const host = u.hostname.toLowerCase();
+    const rawHost = (raw.match(/^[a-z]+:\/\/(?:[^@/]*@)?([^/:?#]+)/i) || [])[1] || host;
+    const bare = host.replace(/^www\./, '');
+    const fields = [['Address', u.href]];
+
+    if (u.protocol === 'http:') flags.push(flag('warn', 'http', 'Not encrypted (http, not https). Anyone on the network can read or alter the page.'));
+    if (u.username || u.password || /^[a-z]+:\/\/[^/?#]*@/i.test(raw)) flags.push(flag('bad', 'userinfo', `Everything before “@” is ignored. This really goes to ${host}.`));
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.startsWith('[')) flags.push(flag('bad', 'ip', 'Points at a raw IP address instead of a name. Legitimate businesses almost never do this.'));
+    if (/[^\x00-\x7f]/.test(rawHost) || host.split('.').some(l => l.startsWith('xn--'))) {
+      const scripts = new Set([...rawHost].map(c => (/[a-z0-9.-]/i.test(c) ? 'latin' : /[Ѐ-ӿ]/.test(c) ? 'cyrillic' : /[Ͱ-Ͽ]/.test(c) ? 'greek' : 'other')));
+      flags.push(scripts.size > 1
+        ? flag('bad', 'lookalike', 'The domain mixes alphabets, a classic lookalike trick (е and e look identical).')
+        : flag('warn', 'punycode', 'International domain name. Check it is the one you expect.'));
+    }
+    if (SHORTENERS.includes(bare)) flags.push(flag('warn', 'shortener', 'Link shortener: the real destination is hidden until you open it.'));
+    if (DYNAMIC.some(d => bare === d || bare.endsWith('.' + d))) flags.push(flag('info', 'dynamic', 'Dynamic QR service: the code forwards on, and its owner can change where it goes after printing.'));
+    if (u.port && !['80', '443'].includes(u.port)) flags.push(flag('warn', 'port', `Uses an unusual port (${u.port}).`));
+    if (RISKY_FILES.test(u.pathname)) flags.push(flag('bad', 'download', 'Downloads an app or program file directly. Install apps from your app store instead.'));
+    if (NEW_TLDS.test(host)) flags.push(flag('info', 'tld', `The .${host.split('.').pop()} ending is cheap and popular with throwaway sites.`));
+    const labels = bare.split('.');
+    const owner = labels.slice(-2).join('.');
+    const brandHit = BRANDS.find(b => bare.includes(b) && labels[labels.length - 2] !== b);
+    if (brandHit) flags.push(flag('warn', 'brand', `“${brandHit}” appears in the address, but the site that owns it is ${owner}.`));
+    else if (LURES.test(labels[labels.length - 2]) && labels[labels.length - 2].includes('-')) flags.push(flag('warn', 'lure', `${owner} is built from words like “login” or “verify”. Real services use their own name.`));
+    if (labels.length > 4) flags.push(flag('info', 'subdomains', 'Lots of subdomains. The part that matters is the last two.'));
+    const params = query(u.search);
+    const tracking = Object.keys(params).filter(k => TRACKING.test(k));
+    if (tracking.length) flags.push(flag('info', 'tracking', `Carries tracking tags (${tracking.join(', ')}). The owner learns this scan came from this code.`));
+
+    // What kind of place is it?
+    let kind = 'website', action = `Opens ${bare} in your browser`;
+    const path = u.pathname;
+    if (/^(apps|itunes)\.apple\.com$/.test(host) || (host === 'play.google.com' && path.startsWith('/store'))) { kind = 'app-store'; action = 'Opens an app store page'; }
+    else if (/^maps\.(google|apple)\.com$/.test(host) || (bare === 'google.com' && path.startsWith('/maps')) || (bare === 'goo.gl' && path.startsWith('/maps'))) { kind = 'map'; action = 'Opens a map location'; }
+    else if (bare === 'wa.me' || host === 'api.whatsapp.com') { kind = 'chat'; action = 'Starts a WhatsApp chat'; }
+    else if (['paypal.me', 'venmo.com', 'cash.app', 'buy.stripe.com', 'square.link', 'pay.google.com'].includes(bare)) { kind = 'payment'; action = 'Opens a payment page'; flags.push(flag('warn', 'pay', 'Leads to a payment. Check who you are paying before you confirm.')); }
+    else if (/\/01\/\d{14}/.test(path)) { kind = 'product'; action = 'GS1 Digital Link: a product page keyed by its barcode number'; fields.push(['GTIN', path.match(/\/01\/(\d{14})/)[1]]); }
+    else if (['youtube.com', 'youtu.be', 'instagram.com', 'tiktok.com', 'facebook.com', 'x.com', 'twitter.com', 'linkedin.com'].includes(bare)) { kind = 'social'; action = `Opens ${bare}`; }
+    else if (/(^|\.)(menu|order|toasttab|opentable|resy)\b/.test(host) || /\/menu\b/i.test(path)) { kind = 'menu'; action = 'Opens a menu or ordering page'; }
+    fields.push(['Domain', host]);
+    if (path && path !== '/') fields.push(['Path', path]);
+    if (u.search) fields.push(['Query', Object.entries(params).map(([k, v]) => `${k}=${v}`).join(' · ')]);
+    return { kind, action, host, href: u.href, fields, flags };
+  }
+
+  // ---- classify ---------------------------------------------------------------------------
+  function classify(input) {
+    const text = String(input ?? '');
+    const t = text.trim();
+    const res = (type, label, action, fields = [], flags = [], extra = {}) => ({ type, label, action, fields, flags, length: text.length, ...extra });
+
+    if (!t) return res('empty', 'Empty', 'Nothing to do');
+
+    if (/^(javascript|vbscript|data|file):/i.test(t)) return res('script', 'Script or local file', 'Tries to run code or open a file on your device', [['Content', t.slice(0, 80)]], [flag('bad', 'scheme', `${t.split(':')[0].toLowerCase()}: links are never something a poster or menu needs.`)]);
+    if (/^intent:/i.test(t)) return res('intent', 'Android intent', 'Asks Android to open a specific app', [['Content', t.slice(0, 120)]], [flag('warn', 'intent', 'Launches an app directly. Make sure you expect it.')]);
+
+    if (/^WIFI:/i.test(t)) {
+      const f = keyed(t.slice(5));
+      const auth = (f.T || 'nopass').toUpperCase();
+      const flags = [];
+      if (auth === 'WEP') flags.push(flag('warn', 'wep', 'WEP is long broken; this network is not really protected.'));
+      if (auth === 'NOPASS' || !f.P) flags.push(flag('info', 'open', 'Open network: no password, so others can see your traffic.'));
+      return res('wifi', 'Wi-Fi login', `Joins the Wi-Fi network “${f.S || '?'}”`,
+        [['Network', f.S || ''], ['Security', auth === 'NOPASS' ? 'None' : auth], ['Password', f.P || '(none)'], ...(f.H === 'true' ? [['Hidden', 'Yes']] : [])], flags, { data: f });
+    }
+
+    if (/^BEGIN:VCARD/i.test(t)) {
+      const f = lines(t);
+      return res('vcard', 'Contact card (vCard)', `Offers to save ${f.FN || f.N || 'a contact'} to your contacts`,
+        [['Name', f.FN || (f.N || '').split(';').filter(Boolean).reverse().join(' ')], ['Phone', f.TEL], ['Email', f.EMAIL], ['Organisation', f.ORG], ['Title', f.TITLE], ['Website', f.URL], ['Address', (f.ADR || '').split(';').filter(Boolean).join(', ')]].filter(r => r[1]), [], { data: f });
+    }
+    if (/^MECARD:/i.test(t)) {
+      const f = keyed(t.slice(7));
+      return res('mecard', 'Contact card (MeCard)', `Offers to save ${f.N ? f.N.split(',').reverse().join(' ').trim() : 'a contact'} to your contacts`,
+        [['Name', f.N], ['Phone', f.TEL], ['Email', f.EMAIL], ['Address', f.ADR], ['Website', f.URL], ['Note', f.NOTE]].filter(r => r[1]), [], { data: f });
+    }
+    if (/^BEGIN:(VEVENT|VCALENDAR)/i.test(t)) {
+      const f = lines(t);
+      return res('event', 'Calendar event', `Offers to add “${f.SUMMARY || 'an event'}” to your calendar`,
+        [['Title', f.SUMMARY], ['Starts', icsDate(f.DTSTART)], ['Ends', icsDate(f.DTEND)], ['Where', f.LOCATION], ['Details', f.DESCRIPTION]].filter(r => r[1]), [], { data: f });
+    }
+
+    let m;
+    if ((m = t.match(/^tel:(.+)$/i))) return res('tel', 'Phone number', `Dials ${m[1]}`, [['Number', m[1]]], [flag('info', 'call', 'Your phone shows the number first; check it before you call.')]);
+    if ((m = t.match(/^(?:sms|smsto|mms|mmsto):([^:?]*)(?:[:?](?:body=)?(.*))?$/i))) {
+      const fl = [];
+      if (/^\d{4,6}$/.test(m[1])) fl.push(flag('warn', 'shortcode', 'Short codes can sign you up to paid text services.'));
+      return res('sms', 'Text message', `Drafts a text to ${m[1] || 'someone'}`, [['To', m[1]], ['Message', decodeSafe(m[2] || '')]].filter(r => r[1]), fl);
+    }
+    if ((m = t.match(/^mailto:([^?]*)(\?.*)?$/i))) {
+      const q = query(m[2]);
+      return res('email', 'Email', `Drafts an email to ${decodeSafe(m[1]) || 'someone'}`, [['To', decodeSafe(m[1])], ['Subject', q.subject], ['Body', q.body], ['Cc', q.cc]].filter(r => r[1]));
+    }
+    if (/^MATMSG:/i.test(t)) {
+      const f = keyed(t.slice(7));
+      return res('email', 'Email', `Drafts an email to ${f.TO || 'someone'}`, [['To', f.TO], ['Subject', f.SUB], ['Body', f.BODY]].filter(r => r[1]));
+    }
+    if ((m = t.match(/^geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:,[^?]*)?(\?.*)?$/i))) {
+      const q = query(m[3]);
+      return res('geo', 'Map location', `Opens your maps app at ${(+m[1]).toFixed(4)}, ${(+m[2]).toFixed(4)}`, [['Latitude', m[1]], ['Longitude', m[2]], ['Label', q.q]].filter(r => r[1]));
+    }
+    if ((m = t.match(/^otpauth:\/\/(totp|hotp)\/([^?]*)(\?.*)?$/i))) {
+      const q = query(m[3]);
+      const labelRaw = decodeSafe(m[2]);
+      const [iss, acct] = labelRaw.includes(':') ? labelRaw.split(':') : [q.issuer || '', labelRaw];
+      return res('otp', 'Two-factor setup', `Adds a ${m[1].toUpperCase()} code for ${q.issuer || iss || 'an account'} to your authenticator`,
+        [['Issuer', q.issuer || iss], ['Account', acct], ['Digits', q.digits || '6'], ['Period', m[1].toLowerCase() === 'totp' ? `${q.period || 30}s` : ''], ['Secret', q.secret ? q.secret.slice(0, 4) + '•••' : '']].filter(r => r[1]),
+        [flag('warn', 'secret', 'This holds a login secret. Only scan codes you created yourself on the real site, and never share them.')]);
+    }
+    if ((m = t.match(/^(bitcoin|ethereum|litecoin|monero|dogecoin|solana):([^?]+)(\?.*)?$/i))) {
+      const q = query(m[3]);
+      return res('crypto', 'Crypto payment', `Opens a wallet to send ${m[1].toLowerCase()}`, [['Coin', m[1]], ['Address', m[2]], ['Amount', q.amount || q.value], ['Label', q.label || q.message]].filter(r => r[1]),
+        [flag('warn', 'pay', 'Crypto payments cannot be reversed. Check the address character by character.')]);
+    }
+    if ((m = t.match(/^upi:\/\/pay(\?.*)$/i))) {
+      const q = query(m[1]);
+      return res('upi', 'UPI payment', `Pays ${q.pn || q.pa || 'someone'} via UPI`, [['Payee', q.pn], ['UPI ID', q.pa], ['Amount', q.am ? `${q.am} ${q.cu || 'INR'}` : ''], ['Note', q.tn]].filter(r => r[1]),
+        [flag('warn', 'pay', 'Leads to a payment. Scanning to pay never receives money.')]);
+    }
+    if (/^BCD\r?\n/.test(t)) {
+      const p = t.split(/\r?\n/);
+      return res('epc', 'SEPA bank transfer', `Pre-fills a bank transfer to ${p[5] || 'someone'}`, [['Payee', p[5]], ['IBAN', p[6]], ['BIC', p[4]], ['Amount', p[7]], ['Reference', p[9] || p[10]]].filter(r => r[1]),
+        [flag('warn', 'pay', 'Check the payee name and IBAN match the invoice.')]);
+    }
+    if (/^SPC\r?\n/.test(t)) {
+      const p = t.split(/\r?\n/);
+      return res('swiss', 'Swiss QR-bill', `Pre-fills a payment to ${p[5] || 'someone'}`, [['IBAN', p[3]], ['Payee', p[5]], ['Amount', p[18] ? `${p[18]} ${p[19] || ''}` : '']].filter(r => r[1]), [flag('warn', 'pay', 'Check the payee before paying.')]);
+    }
+    if ((m = t.match(/^market:\/\/details\?id=([\w.]+)/i))) return res('app', 'App', `Opens ${m[1]} in Google Play`, [['Package', m[1]]]);
+    if (/^\d+$/.test(t) && gtinValid(t)) return res('gtin', 'Product number (GTIN)', 'Just a number: a scanner shows it, a shop looks it up', [['GTIN', t], ['Kind', { 8: 'EAN-8', 12: 'UPC-A', 13: 'EAN-13', 14: 'GTIN-14' }[t.length]]]);
+
+    if (/^(https?:\/\/|www\.)/i.test(t) || /^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(t) && !/\s/.test(t) && /\.[a-z]{2,}(\/|$)/i.test(t)) {
+      const u = urlInfo(t);
+      if (u) {
+        const labels = { website: 'Web link', 'app-store': 'App store link', map: 'Map link', chat: 'Chat link', payment: 'Payment link', product: 'Product link (GS1)', social: 'Social link', menu: 'Menu / ordering link' };
+        return res('url', labels[u.kind], u.action, u.fields, u.flags, { kind: u.kind, host: u.host, href: u.href });
+      }
+    }
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(t)) {
+      const scheme = t.split(':')[0].toLowerCase();
+      return res('deeplink', 'App link', `Asks an app registered for “${scheme}:” to open`, [['Scheme', scheme], ['Content', t.slice(0, 120)]], [flag('info', 'deeplink', 'Opens whichever app claims this scheme, if any.')]);
+    }
+    if (/^[[{]/.test(t)) { try { JSON.parse(t); return res('json', 'Structured data (JSON)', 'Shown as text; meant for a specific app to read', [['Keys', Object.keys(JSON.parse(t)).slice(0, 8).join(', ')]]); } catch (e) { /* plain text */ } }
+    return res('text', 'Plain text', 'Shows the text. Nothing opens', [['Text', t.length > 140 ? t.slice(0, 140) + '…' : t]]);
+  }
+
+  function decodeSafe(s) { try { return decodeURIComponent(s); } catch (e) { return s; } }
+
+  // ---- Builders ---------------------------------------------------------------------------
+  const esc = s => String(s ?? '').replace(/([\\;,:"])/g, '\\$1');
+  const build = {
+    url: ({ url }) => String(url || '').trim(),
+    text: ({ text }) => String(text || ''),
+    wifi: ({ ssid, password, auth = 'WPA', hidden }) => `WIFI:T:${auth === 'none' ? 'nopass' : auth};S:${esc(ssid)};${auth === 'none' ? '' : `P:${esc(password)};`}${hidden ? 'H:true;' : ''};`,
+    contact: ({ name, phone, email, org, url }) => ['BEGIN:VCARD', 'VERSION:3.0', `FN:${name || ''}`, `N:${(name || '').split(' ').reverse().join(';')};;;`, org && `ORG:${org}`, phone && `TEL:${phone}`, email && `EMAIL:${email}`, url && `URL:${url}`, 'END:VCARD'].filter(Boolean).join('\n'),
+    email: ({ to, subject, body }) => `mailto:${to || ''}${subject || body ? '?' + [subject && `subject=${encodeURIComponent(subject)}`, body && `body=${encodeURIComponent(body)}`].filter(Boolean).join('&') : ''}`,
+    sms: ({ to, body }) => `SMSTO:${to || ''}:${body || ''}`,
+    tel: ({ to }) => `tel:${String(to || '').replace(/[^\d+]/g, '')}`,
+    geo: ({ lat, lng, label }) => `geo:${lat},${lng}${label ? `?q=${encodeURIComponent(label)}` : ''}`,
+  };
+
+  const api = { classify, build, gtinValid, SHORTENERS, DYNAMIC };
+  root.Bench = root.Bench || {};
+  root.Bench.qrpayload = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+;
+// js/core/qrlearn.js
+/* Bench · qrlearn.js
+ * The learner model behind the QR course: a skill map grouped into six
+ * levels, Leitner-box spaced repetition, the "how much to explain" dial
+ * that turns lessons into a plain tool, and seeded drill generators.
+ * Dates are YYYY-MM-DD strings; today is always passed in.
+ */
+(function (root) {
+  'use strict';
+  const Q = typeof module !== 'undefined' && module.exports ? require('./qr.js') : root.Bench.qr;
+
+  const LEVELS = [
+    { n: 1, id: 'anatomy', title: 'Anatomy', blurb: 'Name every part of the symbol and what it is for.', ready: true },
+    { n: 2, id: 'cover', title: 'Read the cover', blurb: 'Version, error correction, mask and rough size, read by eye.', ready: true },
+    { n: 3, id: 'bits', title: 'Bits', blurb: 'Modes, the bit stream, zig-zag placement and masks.', ready: false },
+    { n: 4, id: 'ecc', title: 'Error correction', blurb: 'Reed–Solomon blocks and how much damage a code survives.', ready: false },
+    { n: 5, id: 'wild', title: 'In the wild', blurb: 'What codes hold, where you meet them and what they do.', ready: false },
+    { n: 6, id: 'safe', title: 'Safety & mastery', blurb: 'Spot traps, decode by hand and read any code like a cover.', ready: false },
+  ];
+
+  const SKILLS = [
+    { id: 'anatomy.finder', level: 1, label: 'Finder patterns' },
+    { id: 'anatomy.timing', level: 1, label: 'Timing patterns' },
+    { id: 'anatomy.alignment', level: 1, label: 'Alignment patterns' },
+    { id: 'anatomy.format', level: 1, label: 'Format information' },
+    { id: 'anatomy.version', level: 1, label: 'Version information' },
+    { id: 'anatomy.quiet', level: 1, label: 'Quiet zone' },
+    { id: 'anatomy.data', level: 1, label: 'Data codewords' },
+    { id: 'cover.version', level: 2, label: 'Version from size' },
+    { id: 'cover.ec', level: 2, label: 'EC level from the format strip' },
+    { id: 'cover.mask', level: 2, label: 'Mask from the format strip' },
+    { id: 'cover.contents', level: 2, label: 'Guess the contents from density' },
+    { id: 'cover.choose', level: 2, label: 'Choosing an EC level' },
+  ];
+  const skill = id => SKILLS.find(s => s.id === id);
+
+  // Days until the next review for each box. Box 4+ counts as mastered.
+  const INTERVALS = [0, 1, 2, 4, 8, 16];
+  const MAX_BOX = INTERVALS.length - 1;
+  const MASTERED = 4;
+
+  function addDays(iso, n) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const t = new Date(Date.UTC(y, m - 1, d + n));
+    return t.toISOString().slice(0, 10);
+  }
+  const dayDiff = (a, b) => {
+    const p = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+    return Math.round((p(b) - p(a)) / 864e5);
+  };
+
+  const empty = () => ({ skills: {}, log: [] });
+  const boxOf = (state, id) => (state.skills[id] ? state.skills[id].box : 0);
+
+  // A right answer moves the skill up a box; a wrong one drops it two
+  function record(state, id, correct, today) {
+    const prev = state.skills[id] || { box: 0, right: 0, wrong: 0 };
+    const box = correct ? Math.min(MAX_BOX, prev.box + 1) : Math.max(0, prev.box - 2);
+    const next = { box, right: prev.right + (correct ? 1 : 0), wrong: prev.wrong + (correct ? 0 : 1), due: addDays(today, correct ? INTERVALS[box] : 0), last: today };
+    const log = state.log.concat([{ d: today, s: id, ok: !!correct }]).slice(-300);
+    return { ...state, skills: { ...state.skills, [id]: next }, log };
+  }
+
+  const mastery = (state, ids) => (ids.length ? ids.reduce((a, id) => a + Math.min(boxOf(state, id), MASTERED), 0) / (ids.length * MASTERED) : 0);
+  const levelSkills = n => SKILLS.filter(s => s.level === n).map(s => s.id);
+  const levelProgress = (state, n) => mastery(state, levelSkills(n));
+  const isMastered = (state, id) => boxOf(state, id) >= MASTERED;
+
+  // How much should the tool explain this? explain → predict → hide
+  function scaffold(state, ids, override) {
+    if (override && override !== 'auto') return override;
+    const avg = ids.reduce((a, id) => a + boxOf(state, id), 0) / Math.max(1, ids.length);
+    return avg < 2 ? 'explain' : avg < MASTERED ? 'predict' : 'hide';
+  }
+
+  const isDue = (state, id, today) => !!state.skills[id] && state.skills[id].due <= today;
+  const dueSkills = (state, today, pool = SKILLS.map(s => s.id)) => pool.filter(id => isDue(state, id, today));
+
+  // Next skill to practise: anything due (weakest first), then the first unseen, then the weakest
+  function nextSkill(state, today, pool = SKILLS.filter(s => LEVELS[s.level - 1].ready).map(s => s.id)) {
+    const due = dueSkills(state, today, pool).sort((a, b) => boxOf(state, a) - boxOf(state, b));
+    if (due.length) return due[0];
+    const unseen = pool.find(id => !state.skills[id]);
+    if (unseen) return unseen;
+    return null;
+  }
+
+  // Consecutive days with at least one drill, ending today or yesterday
+  function streak(state, today) {
+    const days = new Set(state.log.map(e => e.d));
+    let d = days.has(today) ? today : addDays(today, -1), n = 0;
+    while (days.has(d)) { n++; d = addDays(d, -1); }
+    return n;
+  }
+
+  function recommendedLevel(state) {
+    for (const L of LEVELS) if (L.ready && levelProgress(state, L.n) < 0.75) return L.n;
+    return (LEVELS.filter(l => l.ready).pop() || LEVELS[0]).n;
+  }
+
+  // ---- Drills ----------------------------------------------------------------------------------
+  function rng(seed) {
+    let a = seed >>> 0;
+    return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  const pick = (r, arr) => arr[Math.floor(r() * arr.length)];
+  function shuffle(r, arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  const choicesWith = (r, answer, pool, n = 4) => shuffle(r, [answer, ...shuffle(r, pool.filter(x => x !== answer)).slice(0, n - 1)]);
+
+  const WORDS = ['menu', 'table', 'park', 'ticket', 'gate', 'promo', 'event', 'pay', 'order', 'info', 'room', 'tour'];
+  const DOMAINS = ['cafe-luna.com', 'citypark.org', 'museum.example', 'shop.example', 'transit.example', 'festival.example'];
+  function samplePayload(r, chars) {
+    let s = `https://${pick(r, DOMAINS)}/${pick(r, WORDS)}`;
+    while (s.length < chars) s += (s.includes('?') ? '&' : '?') + pick(r, WORDS) + '=' + Math.floor(r() * 1e6).toString(36);
+    return s.slice(0, chars);
+  }
+
+  const PART = { finder: 'Finder pattern', separator: 'Separator', timing: 'Timing pattern', alignment: 'Alignment pattern', format: 'Format information', version: 'Version information', data: 'Data codeword', dark: 'Dark module' };
+  const PART_POOL = ['Finder pattern', 'Timing pattern', 'Alignment pattern', 'Format information', 'Version information', 'Data codeword', 'Separator'];
+  const WHY = {
+    finder: 'Three big squares in three corners. A scanner finds them first; their 1:1:3:1:1 stripes look the same at any angle, and the missing fourth corner tells it which way up the code is.',
+    timing: 'The dotted line between the finders alternates dark/light. It tells the scanner how wide one module is, so it can count columns on a warped or tilted code.',
+    alignment: 'Small bullseyes (from version 2 up) that let the scanner correct for curved or angled surfaces.',
+    format: 'Fifteen bits beside the finders say which error-correction level and mask were used. They are stored twice, so one copy can be damaged.',
+    version: 'Version 7 and up print the version number in two 6×3 blocks, because counting 45+ modules by eye or by camera is error-prone.',
+    data: 'Eight modules in a 2-wide zig-zag make one codeword (one byte), holding either your data or error-correction bytes.',
+  };
+
+  // Each generator returns { skill, prompt, code: encode options, highlight: [[x,y]…], choices, answer, why }
+  const GENERATORS = {
+    'anatomy.finder': r => anatomy(r, 'finder', pick(r, [1, 2, 3])),
+    'anatomy.timing': r => anatomy(r, 'timing', pick(r, [1, 2, 3])),
+    'anatomy.alignment': r => anatomy(r, 'alignment', pick(r, [2, 3, 4, 5])),
+    'anatomy.format': r => anatomy(r, 'format', pick(r, [1, 2, 3])),
+    'anatomy.version': r => anatomy(r, 'version', 7),
+    'anatomy.data': r => anatomy(r, 'data', pick(r, [1, 2])),
+    'anatomy.quiet': r => {
+      const q = pick(r, [
+        { prompt: 'How wide must the empty margin (quiet zone) around a QR code be?', answer: '4 modules', pool: ['1 module', '2 modules', '4 modules', '10% of the width'] },
+        { prompt: 'A code is printed edge-to-edge on a busy patterned poster. Why might it fail?', answer: 'No quiet zone, so the finders blend in', pool: ['No quiet zone, so the finders blend in', 'The colours are reversed', 'It needs a logo', 'Posters need version 40'] },
+      ]);
+      return { skill: 'anatomy.quiet', prompt: q.prompt, code: { text: 'QUIET ZONE', ec: 'M' }, quiet: 4, highlight: [], choices: shuffle(r, q.pool), answer: q.answer, why: 'The scanner needs a clean light border, 4 modules wide, to tell the finder patterns apart from whatever is printed around the code.' };
+    },
+    'cover.version': r => {
+      const v = pick(r, [1, 2, 3, 4, 5, 6, 7, 8, 10]);
+      const text = samplePayload(r, Math.max(4, Math.floor(Q.capacity(v, 'L') * (0.75 + r() * 0.2))));
+      if (r() < 0.5) {
+        const size = Q.sizeOf(v);
+        return { skill: 'cover.version', prompt: `This code is ${size} modules across. Which version is it?`, code: { text, ec: 'L', version: v }, highlight: [], choices: choicesWith(r, String(v), ['1', '2', '3', '4', '5', '6', '7', '8', '10', '12']), answer: String(v), why: `Size = 17 + 4 × version, so version = (${size} − 17) ÷ 4 = ${v}.` };
+      }
+      const range = v === 1 ? 'Version 1' : v <= 6 ? 'Versions 2–6' : 'Versions 7–13';
+      return { skill: 'cover.version', prompt: 'Count the small alignment bullseyes. Which versions could this be?', code: { text, ec: 'L', version: v }, highlight: [], choices: ['Version 1', 'Versions 2–6', 'Versions 7–13', 'Versions 14+'], answer: range, why: 'No bullseye: version 1. One: 2–6. Six (a 3×3 grid minus the three finder corners): 7–13. Then 13, 22 … as the grid grows. Codes 7+ also carry version blocks beside the finders.' };
+    },
+    'cover.ec': r => {
+      const ec = pick(r, ['L', 'M', 'Q', 'H']);
+      const code = { text: samplePayload(r, 12 + Math.floor(r() * 14)), ec };
+      const e = Q.encode(code.text, code);
+      const b = [(e.format >>> 14) & 1, (e.format >>> 13) & 1];
+      return { skill: 'cover.ec', prompt: 'Read the two highlighted modules left to right (dark = 1), then flip the first bit. Which error-correction level is it?', code, highlight: [[0, 8], [1, 8]], choices: ['L', 'M', 'Q', 'H'], answer: ec, why: `They read ${b.join(' ')}. The format is XOR-ed with 10101…, so flip the first bit: ${b[0] ^ 1} ${b[1]}. 01 = L, 00 = M, 11 = Q, 10 = H.` };
+    },
+    'cover.mask': r => {
+      const mask = Math.floor(r() * 8);
+      const code = { text: samplePayload(r, 10 + Math.floor(r() * 12)), ec: pick(r, ['L', 'M']), mask };
+      const e = Q.encode(code.text, code);
+      const b = [12, 11, 10].map(i => (e.format >>> i) & 1);
+      return { skill: 'cover.mask', prompt: 'The three highlighted modules hold the mask number, XOR-ed with 1 0 1. Which mask is it?', code, highlight: [[2, 8], [3, 8], [4, 8]], choices: choicesWith(r, String(mask), ['0', '1', '2', '3', '4', '5', '6', '7']), answer: String(mask), why: `They read ${b.join(' ')}. XOR with 1 0 1 gives ${b.map((x, i) => x ^ [1, 0, 1][i]).join(' ')} = mask ${mask}: ${Q.MASK_FORMULAS[mask]}.` };
+    },
+    'cover.contents': r => {
+      const kinds = [
+        { label: 'A product number', text: () => '4006381333931', why: 'A 13-digit barcode number in numeric mode fits in the smallest code.' },
+        { label: 'A short link', text: () => `https://${pick(r, ['bit.ly', 'qrco.de', 't.ly'])}/${Math.floor(r() * 1e9).toString(36)}`, why: 'A short link is only 20–25 characters.' },
+        { label: 'A full web address with tracking', text: () => samplePayload(r, 110 + Math.floor(r() * 30)), why: 'A long URL with tracking tags runs past 100 characters.' },
+        { label: 'A contact card', text: () => ['BEGIN:VCARD', 'VERSION:3.0', 'FN:Ada Example', 'N:Example;Ada;;;', 'ORG:Example Studio', 'TITLE:Producer', 'TEL:+1 555 0100 2233', 'EMAIL:ada@studio.example', 'URL:https://studio.example', 'ADR:;;1 Main St;Springfield;;12345;US', 'END:VCARD'].join('\n'), why: 'A vCard with phone, email, address and site is over 200 bytes.' },
+      ];
+      const k = pick(r, kinds), code = { text: k.text(), ec: 'M' };
+      const v = Q.encode(code.text, code).version;
+      return { skill: 'cover.contents', prompt: 'Judge by density alone: what is this code most likely holding?', code, highlight: [], choices: shuffle(r, kinds.map(x => x.label)), answer: k.label, why: `${k.why} That needs version ${v} (${Q.sizeOf(v)}×${Q.sizeOf(v)}). More data means more modules.` };
+    },
+    'cover.choose': r => {
+      const q = pick(r, [
+        { prompt: 'A code has a big logo pasted over its centre and still scans. Which level was most likely used?', answer: 'H (30%)', why: 'A logo destroys modules. H can rebuild about 30% of codewords, enough to cover a centred logo.' },
+        { prompt: 'Which level gives the most capacity at a given size?', answer: 'L (7%)', why: 'L spends the fewest codewords on repair, leaving the most for data.' },
+        { prompt: 'A code goes on shipping boxes that get scuffed and wet. Best pick?', answer: 'Q (25%)', why: 'Q (or H) survives real wear. M is the everyday default for clean print and screens.' },
+        { prompt: 'A code shown on a clean screen, with no logo. A sensible default?', answer: 'M (15%)', why: 'M is the common default: decent repair without making the code much denser.' },
+      ]);
+      return { skill: 'cover.choose', prompt: q.prompt, code: { text: 'EC LEVELS', ec: q.answer[0] }, highlight: [], choices: ['L (7%)', 'M (15%)', 'Q (25%)', 'H (30%)'], answer: q.answer, why: q.why };
+    },
+  };
+
+  function anatomy(r, part, v) {
+    const code = { text: samplePayload(r, Math.max(6, Math.floor(Q.capacity(v, 'M') * 0.8))), ec: 'M', version: v };
+    const e = Q.encode(code.text, code);
+    const cells = cellsOf(e, part, r);
+    return { skill: `anatomy.${part}`, prompt: 'Which part of the code is highlighted?', code, highlight: cells, choices: choicesWith(r, PART[part], PART_POOL), answer: PART[part], why: WHY[part] };
+  }
+
+  // One instance of a part: a single finder, one alignment pattern, one format copy, one codeword …
+  function cellsOf(e, part, r = Math.random) {
+    const { size, role, codeword } = e, R = Q.ROLE[part], cells = [];
+    for (let i = 0; i < size * size; i++) if (role[i] === R) cells.push([i % size, Math.floor(i / size)]);
+    if (part === 'finder' || part === 'separator') {
+      const corner = Math.floor(r() * 3), near = (x, y) => (corner === 0 ? x < 9 && y < 9 : corner === 1 ? x > size - 10 && y < 9 : x < 9 && y > size - 10);
+      return cells.filter(([x, y]) => near(x, y));
+    }
+    if (part === 'alignment') {
+      const centres = Q.alignmentPositions(e.version);
+      const all = [];
+      for (const cx of centres) for (const cy of centres) if (cells.some(([x, y]) => x === cx && y === cy)) all.push([cx, cy]);
+      const [cx, cy] = all[Math.floor(r() * all.length)];
+      return cells.filter(([x, y]) => Math.abs(x - cx) <= 2 && Math.abs(y - cy) <= 2);
+    }
+    if (part === 'format') return r() < 0.5 ? cells.filter(([x, y]) => x < 9 && y < 9) : cells.filter(([x, y]) => x > 8 || y > 8);
+    if (part === 'version') return r() < 0.5 ? cells.filter(([x]) => x > 8) : cells.filter(([x]) => x < 8);
+    if (part === 'timing') return r() < 0.5 ? cells.filter(([, y]) => y === 6) : cells.filter(([x]) => x === 6);
+    if (part === 'data') {
+      const cw = Math.floor(r() * Math.min(e.data.length, 10)) + 2;
+      const out = [];
+      for (let i = 0; i < size * size; i++) if (codeword[i] === cw) out.push([i % size, Math.floor(i / size)]);
+      return out;
+    }
+    return cells;
+  }
+
+  function drill(id, seed = Date.now()) {
+    const gen = GENERATORS[id];
+    if (!gen) throw new Error(`No drill for ${id}`);
+    const d = gen(rng(seed));
+    return { ...d, seed };
+  }
+
+  const api = { LEVELS, SKILLS, INTERVALS, MASTERED, skill, empty, record, boxOf, mastery, levelSkills, levelProgress, isMastered, scaffold, isDue, dueSkills, nextSkill, streak, recommendedLevel, addDays, dayDiff, drill, cellsOf, rng, GENERATORS, WHY, PART };
+  root.Bench = root.Bench || {};
+  root.Bench.qrlearn = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+;
 // js/core/kit.js
 /* Bench · kit.js
  * Browser-side helpers shared by every module: element builder, icons,
@@ -1302,6 +2358,7 @@ window.Bench = window.Bench || {}; window.Bench.SINGLE_FILE = true;
     x: 'M6 6l12 12M18 6L6 18',
     pin: 'M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11zM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
     clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+    qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2.5v2.5H14zM17.5 17.5H20V20h-2.5zM14 20h.01M20 14h.01M7 7h.01M17 7h.01M7 17h.01',
   };
   function icon(name, cls) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -3236,6 +4293,507 @@ Back to [[Tanks design notes]].`,
     id: 'toolbox', title: 'Toolbox', short: 'Tools', icon: 'toolbox', group: 'make', key: 'x',
     render,
     commands: () => TOOLS.map(t => ({ label: `${t.label}: ${t.desc}`, icon: 'toolbox', run: () => { active = t.id; Bench.navigate('toolbox'); } })),
+  });
+})(window.Bench);
+
+;
+// js/modules/qr.js
+/* Bench · QR Codes
+ * A course that turns into a tool. Path shows the six-level roadmap and
+ * what's due; Learn holds the lessons and drills; Inspect and Make are
+ * the everyday tools, and they explain less as your skills grow.
+ */
+(function (Bench) {
+  'use strict';
+  const { h, icon, store, toast } = Bench;
+  const Q = Bench.qr, L = Bench.qrlearn, P = Bench.qrpayload;
+
+  const today = () => Bench.ledger.isoDay(new Date());
+  const progress = () => { const s = store.get('qr', null); return s && s.skills ? s : L.empty(); };
+  const ui = () => ({ tab: 'path', level: 1, explain: 'auto', inspect: 'https://bit.ly/3menu-table12', ...store.get('qr:ui', {}) });
+  const setUi = patch => store.set('qr:ui', { ...ui(), ...patch });
+  const readySkills = () => L.SKILLS.filter(s => L.LEVELS[s.level - 1].ready).map(s => s.id);
+
+  // ---------------------------------------------------------------- the code itself
+  // Renders a symbol as SVG. Highlighted modules get the highlighter behind them;
+  // dark ones are inset so the yellow still shows around them.
+  function codeSvg(e, { highlight = [], quiet = 4, label, markQuiet } = {}) {
+    const n = e.size, S = n + quiet * 2;
+    const hl = new Set(highlight.map(([x, y]) => y * n + x));
+    let marks = '', ink = '';
+    for (const i of hl) marks += `M${i % n} ${Math.floor(i / n)}h1v1h-1z`;
+    for (let y = 0; y < n; y++) {
+      let run = 0;
+      for (let x = 0; x <= n; x++) {
+        const i = y * n + x, dark = x < n && e.modules[i] && !hl.has(i);
+        if (dark) { run++; continue; }
+        if (run) { ink += `M${x - run} ${y}h${run}v1h-${run}z`; run = 0; }
+        if (x < n && e.modules[i] && hl.has(i)) ink += `M${x + 0.17} ${y + 0.17}h.66v.66h-.66z`;
+      }
+    }
+    const aria = String(label || `QR code, version ${e.version}`).replace(/[<>&"]/g, '');
+    return `<svg viewBox="${-quiet} ${-quiet} ${S} ${S}" role="img" aria-label="${aria}" shape-rendering="crispEdges">` +
+      `<rect class="qr-off" x="${-quiet}" y="${-quiet}" width="${S}" height="${S}"/>` +
+      (markQuiet ? `<path class="qr-hl" fill-rule="evenodd" d="M${-quiet} ${-quiet}h${S}v${S}h-${S}zM0 0v${n}h${n}v-${n}z"/>` : '') +
+      (marks ? `<path class="qr-hl" d="${marks}"/>` : '') + `<path class="qr-on" d="${ink}"/></svg>`;
+  }
+
+  function plate(e, opts = {}) {
+    const el = h('div.qr-plate', { html: codeSvg(e, opts), style: opts.max ? { maxWidth: opts.max } : null });
+    if (opts.onCell) {
+      const quiet = opts.quiet ?? 4;
+      const cellAt = ev => {
+        const r = el.getBoundingClientRect(), S = e.size + quiet * 2;
+        return [Math.floor(((ev.clientX - r.left) / r.width) * S) - quiet, Math.floor(((ev.clientY - r.top) / r.height) * S) - quiet];
+      };
+      let down = false;
+      el.addEventListener('pointerdown', ev => { down = true; el.setPointerCapture?.(ev.pointerId); opts.onCell(cellAt(ev), 'down'); ev.preventDefault(); });
+      el.addEventListener('pointermove', ev => { if (down) opts.onCell(cellAt(ev), 'move'); });
+      const up = () => { down = false; };
+      el.addEventListener('pointerup', up);
+      el.addEventListener('pointercancel', up);
+    }
+    return el;
+  }
+
+  const roleCells = (e, role) => { const out = [], R = Q.ROLE[role]; for (let i = 0; i < e.size * e.size; i++) if (e.role[i] === R) out.push([i % e.size, Math.floor(i / e.size)]); return out; };
+  const pct = x => `${Math.round(x * 100)}%`;
+  const boxDots = box => '●'.repeat(Math.min(box, L.MASTERED)) + '○'.repeat(Math.max(0, L.MASTERED - box));
+
+  // ---------------------------------------------------------------- parts of the symbol
+  const PARTS = [
+    { id: 'finder', name: 'Finder patterns', why: L.WHY.finder },
+    { id: 'separator', name: 'Separators', why: 'A one-module light ring around each finder, so the finder never touches data and its 1:1:3:1:1 stripes stay clean.' },
+    { id: 'timing', name: 'Timing patterns', why: L.WHY.timing },
+    { id: 'alignment', name: 'Alignment patterns', why: L.WHY.alignment },
+    { id: 'format', name: 'Format information', why: L.WHY.format },
+    { id: 'dark', name: 'Dark module', why: 'One module beside the bottom-left finder is always dark. It is part of the spec, not data. Handy for checking you have the code the right way round.' },
+    { id: 'version', name: 'Version information', why: L.WHY.version },
+    { id: 'data', name: 'Data & error correction', why: L.WHY.data + ' Everything not reserved is data: your message first, then the Reed–Solomon bytes that let a damaged code be repaired.' },
+    { id: 'remainder', name: 'Remainder bits', why: 'A few leftover modules in some versions that do not fill a whole byte. They are always 0 before masking.' },
+    { id: 'quiet', name: 'Quiet zone', why: 'The empty margin, at least 4 modules wide. It is not part of the grid, but without it a scanner cannot separate the code from its surroundings.' },
+  ];
+
+  // ---------------------------------------------------------------- drills
+  function drillPanel({ pool, title = 'Practice', onAnswer }) {
+    const body = h('div.sheet-body.stack');
+    const sheet = h('section.sheet', null, h('div.sheet-head', null, h('h2', null, title), h('span.faint', { style: { fontSize: 'var(--t-xs)' } }, 'Answers move skills between review boxes')), body);
+    let count = 0;
+    function next() {
+      const p = progress();
+      const ids = pool();
+      const id = L.nextSkill(p, today(), ids) || ids[Math.floor(Math.random() * ids.length)];
+      const d = L.drill(id, (Date.now() + count++ * 7919) >>> 0);
+      const e = Q.encode(d.code.text, d.code);
+      const feedback = h('div', { 'aria-live': 'polite' });
+      let answered = false;
+      const buttons = d.choices.map((c, i) => h('button.btn.qr-choice', { type: 'button', id: `qr-choice-${i}`, onclick: () => answer(c) }, c));
+      function answer(c) {
+        if (answered) return;
+        answered = true;
+        const ok = c === d.answer;
+        store.set('qr', L.record(progress(), id, ok, today()));
+        buttons.forEach(b => { b.disabled = true; if (b.textContent === d.answer) b.classList.add('right'); else if (b.textContent === c) b.classList.add('wrong'); });
+        const box = L.boxOf(progress(), id);
+        feedback.replaceChildren(h('div.stack', null,
+          h('div.row', null, h('span', { class: `chip ${ok ? 'good' : 'bad'}` }, ok ? icon('check') : icon('x'), ok ? 'Right' : `It was “${d.answer}”`),
+            h('span.faint.mono', { style: { fontSize: 'var(--t-xs)' }, title: 'Review box' }, `${L.skill(id).label} ${boxDots(box)}`)),
+          h('p.muted', null, d.why),
+          h('div.row', null, h('button.btn.primary', { type: 'button', id: 'qr-next', onclick: next }, 'Next', icon('arrow')))));
+        if (onAnswer) onAnswer(ok);
+        feedback.querySelector('button').focus();
+      }
+      body.replaceChildren(
+        h('div.eyebrow', null, L.skill(id).label),
+        h('p', { style: { fontWeight: 600 } }, d.prompt),
+        plate(e, { highlight: d.highlight, markQuiet: id === 'anatomy.quiet', max: '300px', label: 'Drill code' }),
+        h('div.qr-choices', null, buttons), feedback);
+    }
+    next();
+    return sheet;
+  }
+
+  // ---------------------------------------------------------------- Path
+  function pathTab(go) {
+    const p = progress(), t = today(), ready = readySkills();
+    const mastered = ready.filter(id => L.isMastered(p, id)).length;
+    const due = L.dueSkills(p, t, ready).length;
+    const rec = L.recommendedLevel(p);
+    const stats = h('section.sheet', null, h('div.stats', null,
+      stat('Skills mastered', `${mastered}/${ready.length}`, 'at box 4 or above'),
+      stat('Due today', String(due), due ? 'quick reviews waiting' : 'all caught up'),
+      stat('Streak', `${L.streak(p, t)}d`, 'days in a row'),
+      stat('Answers', String(p.log.length), `${p.log.filter(x => x.ok).length} right`)));
+
+    const route = h('ol.qr-route', null, L.LEVELS.map(lv => {
+      const prog = L.levelProgress(p, lv.n);
+      const skills = L.SKILLS.filter(s => s.level === lv.n);
+      return h('li', { class: `sheet qr-level${lv.n === rec ? ' now' : ''}${lv.ready ? '' : ' later'}` },
+        h('div.qr-level-n', null, String(lv.n)),
+        h('div.grow', null,
+          h('div.row', null, h('h3', null, lv.title), lv.n === rec ? h('span.chip.mark', null, 'Next up') : null, !lv.ready ? h('span.chip', null, 'In preparation') : null),
+          h('p.muted', null, lv.blurb),
+          lv.ready ? h('div.qr-bar', { role: 'progressbar', 'aria-valuenow': Math.round(prog * 100), 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-label': `${lv.title} mastery` }, h('i', { style: { width: pct(prog) } })) : null,
+          skills.length ? h('div.row.qr-skills', null, skills.map(s => h('span.chip', { title: `Review box ${L.boxOf(p, s.id)} of 5` }, s.label, ' ', h('span.mono', null, boxDots(L.boxOf(p, s.id)))))) : null),
+        lv.ready ? h('button', { class: `btn ${lv.n === rec ? 'primary' : ''}`, type: 'button', id: `qr-open-${lv.n}`, onclick: () => go('learn', { level: lv.n }) }, prog > 0 ? 'Continue' : 'Start', icon('arrow')) : null);
+    }));
+
+    const mode = ui().explain;
+    const dial = h('section.sheet', null,
+      h('div.sheet-head', null, h('h2', null, 'From teacher to tool'), h('span.chip', null, `Tools now: ${{ explain: 'explaining', predict: 'quizzing', hide: 'facts only' }[L.scaffold(p, ready, mode)]}`)),
+      h('div.sheet-body.stack', null,
+        h('p.muted', null, 'Inspect and Make explain everything at first. As skills reach mastery they start asking you to predict before they reveal, and finally just show the facts, like reading a book’s cover. Override it here.'),
+        explainSeg(() => go('path'))));
+
+    const review = due ? h('section.sheet', null, h('div.sheet-body.row', null, h('b', null, `${due} skill${due > 1 ? 's' : ''} due for review`), h('span.spacer'), h('button.btn.primary', { type: 'button', id: 'qr-review', onclick: () => go('learn', { level: 'review' }) }, 'Review now'))) : null;
+    return [stats, review, h('div.qr-path', null, route, dial)];
+  }
+  function stat(k, v, d) { return h('div.stat', null, h('div.eyebrow', null, k), h('div.v', null, v), h('div.d', null, d)); }
+
+  function explainSeg(after) {
+    const cur = ui().explain;
+    return h('div.seg', { role: 'group', 'aria-label': 'How much the tools explain' },
+      [['auto', 'Auto'], ['explain', 'Explain'], ['predict', 'Quiz me'], ['hide', 'Facts only']].map(([v, label]) =>
+        h('button', { type: 'button', id: `qr-explain-${v}`, 'aria-pressed': String(cur === v), onclick: () => { setUi({ explain: v }); if (after) after(); } }, label)));
+  }
+
+  // ---------------------------------------------------------------- Learn
+  function learnTab(go) {
+    const lv = ui().level;
+    const levelSeg = h('div.seg', { role: 'group', 'aria-label': 'Lesson' },
+      L.LEVELS.filter(l => l.ready).map(l => h('button', { type: 'button', id: `qr-level-${l.n}`, 'aria-pressed': String(lv === l.n), onclick: () => go('learn', { level: l.n }) }, `${l.n} · ${l.title}`)),
+      h('button', { type: 'button', id: 'qr-level-review', 'aria-pressed': String(lv === 'review'), onclick: () => go('learn', { level: 'review' }) }, 'Review'));
+    if (lv === 'review') return [levelSeg, drillPanel({ title: 'Review', pool: readySkills })];
+    const lesson = lv === 2 ? coverLesson() : anatomyLesson();
+    return [levelSeg, ...lesson, drillPanel({ title: `Practice · Level ${lv}`, pool: () => L.levelSkills(lv) })];
+  }
+
+  // Level 1: tap any module to learn what it is; then break the code and see when it stops reading
+  function anatomyLesson() {
+    let text = 'https://bench.example/qr', minVersion = 2, ec = 'M', part = 'finder', breaking = false;
+    let e, flipped = new Set(), paintTo = null;
+    const view = h('div.qr-stage'), info = h('div.stack'), status = h('div', { 'aria-live': 'polite' });
+    const partsSeg = h('div.qr-parts', { role: 'group', 'aria-label': 'Parts' });
+    const build = () => { e = Q.encode(text, { ec, minVersion }); flipped = new Set(); };
+
+    function current() {
+      if (!flipped.size) return e;
+      const m = e.modules.slice();
+      for (const i of flipped) m[i] ^= 1;
+      return { ...e, modules: m };
+    }
+    function paint() {
+      const c = current();
+      const highlight = breaking ? [...flipped].map(i => [i % e.size, Math.floor(i / e.size)]) : part === 'quiet' ? [] : roleCells(e, part);
+      view.replaceChildren(plate(c, { highlight, onCell, markQuiet: !breaking && part === 'quiet', label: breaking ? 'Code you can damage' : 'Tap a module to see what it is' }));
+      view.classList.toggle('breaking', breaking);
+      partsSeg.replaceChildren(...PARTS.map(pt => {
+        const n = pt.id === 'quiet' ? 0 : roleCells(e, pt.id).length;
+        const absent = pt.id !== 'quiet' && !n;
+        return h('button', { type: 'button', id: `qr-part-${pt.id}`, 'aria-pressed': String(!breaking && part === pt.id), disabled: absent, title: absent ? `Version ${e.version} has none` : '', onclick: () => { part = pt.id; breaking = false; paint(); } }, pt.name);
+      }));
+      const pt = PARTS.find(x => x.id === part);
+      const count = part === 'quiet' ? `${(e.size + 8) ** 2 - e.size ** 2} modules of margin` : `${roleCells(e, part).length} modules`;
+      info.replaceChildren(
+        breaking ? h('div.stack', null, h('h3', null, 'Break it'), h('p.muted', null, 'Tap or drag across the code to flip modules. Error correction repairs the damage until a block runs out of repair bytes. Paste a logo at level M, then try again at H.'),
+          h('div.seg', { role: 'group', 'aria-label': 'Error-correction level' }, 'LMQH'.split('').map(x => h('button', { type: 'button', id: `qr-break-ec-${x}`, 'aria-pressed': String(ec === x), onclick: () => { ec = x; build(); paint(); } }, `${x} · ${Q.EC[x].recover}%`))))
+          : h('div.stack', null, h('div.row', null, h('h3', null, pt.name), h('span.chip.mono', null, count)), h('p', null, pt.why)),
+        h('div.row', null,
+          h('button', { class: `btn sm ${breaking ? 'dark' : ''}`, type: 'button', id: 'qr-break', 'aria-pressed': String(breaking), onclick: () => { breaking = !breaking; paint(); } }, breaking ? 'Back to exploring' : 'Break it'),
+          breaking ? h('button.btn.sm', { type: 'button', id: 'qr-logo', onclick: () => { cover(0.1); } }, 'Paste a logo') : null,
+          breaking ? h('button.btn.sm', { type: 'button', id: 'qr-scratch', onclick: () => { scratch(0.04); } }, 'Scratch it') : null,
+          breaking ? h('button.btn.sm.ghost', { type: 'button', id: 'qr-repair', onclick: () => { flipped = new Set(); paint(); } }, icon('reset'), 'Repair') : null));
+      status.replaceChildren(breaking || flipped.size ? decodeStatus(c) : h('span.faint', { style: { fontSize: 'var(--t-xs)' } }, `Version ${e.version} · ${e.size}×${e.size} · level ${e.ec} · mask ${e.mask}`));
+    }
+    function onCell([x, y], phase) {
+      const inGrid = x >= 0 && y >= 0 && x < e.size && y < e.size;
+      if (!breaking) {
+        if (phase !== 'down') return;
+        part = inGrid ? Q.ROLE_NAMES[e.role[y * e.size + x]] : 'quiet';
+        paint();
+        return;
+      }
+      if (!inGrid) return;
+      const i = y * e.size + x;
+      if (phase === 'down') paintTo = !flipped.has(i);
+      if (paintTo && !flipped.has(i)) flipped.add(i); else if (!paintTo && flipped.has(i)) flipped.delete(i); else return;
+      paint();
+    }
+    function cover(frac) {
+      const s = Math.round(e.size * Math.sqrt(frac)), o = Math.floor((e.size - s) / 2);
+      for (let y = o; y < o + s; y++) for (let x = o; x < o + s; x++) { const i = y * e.size + x; if (e.modules[i]) flipped.add(i); }
+      paint();
+    }
+    function scratch(frac) {
+      for (let i = 0; i < e.size * e.size; i++) if (Math.random() < frac) { if (flipped.has(i)) flipped.delete(i); else flipped.add(i); }
+      paint();
+    }
+
+    const textIn = h('input.input', { id: 'qr-anatomy-text', value: text, 'aria-label': 'Text to encode', oninput: Bench.debounce(ev => { text = ev.target.value || ' '; build(); paint(); }, 200) });
+    const vSeg = h('div.seg', { role: 'group', 'aria-label': 'Minimum version' }, [[1, 'v1'], [2, 'v2'], [7, 'v7']].map(([v, label]) =>
+      h('button', { type: 'button', id: `qr-anatomy-v${v}`, 'aria-pressed': String(minVersion === v), onclick: ev => { minVersion = v; ev.target.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === ev.target))); build(); paint(); } }, label)));
+    build(); paint();
+    return [h('div.grid.qr-lesson', null,
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Anatomy'), h('div.actions', null, vSeg)), h('div.sheet-body.stack', null, view, status, h('div.field', null, h('span', null, 'Encode'), textIn))),
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'The parts')), h('div.sheet-body.stack', null, partsSeg, info)))];
+  }
+
+  function decodeStatus(c) {
+    const d = Q.decodeMatrix(c.modules);
+    if (d.ok) {
+      const worst = Math.max(...d.corrections.map((n, i) => n / d.capacity[i]));
+      return h('div.stack', null,
+        h('div.row', null, h('span.chip.good', null, icon('check'), 'Still reads'), h('span.mono', { style: { fontSize: 'var(--t-xs)', overflowWrap: 'anywhere' } }, d.text.slice(0, 60))),
+        h('div.faint', { style: { fontSize: 'var(--t-xs)' } }, d.corrected ? `Repaired ${d.corrected} codeword${d.corrected > 1 ? 's' : ''}. The worst block used ${pct(worst)} of its repair budget.` : 'Nothing needed repair.'),
+        h('div.qr-bar', { 'aria-hidden': 'true' }, h('i', { style: { width: pct(worst), background: worst > 0.8 ? 'var(--warn)' : 'var(--ink)' } })));
+    }
+    return h('div.stack', null, h('span.chip.bad', null, 'Unreadable'), h('div.muted', { style: { fontSize: 'var(--t-sm)' } }, d.error));
+  }
+
+  // Level 2: read the version, EC level, mask and likely contents from the outside
+  function coverLesson() {
+    // 1 · size → version
+    let v = 3;
+    const vView = h('div.qr-stage'), vFacts = h('div.stack');
+    const vPaint = () => {
+      const e = Q.encode('1', { ec: 'L', version: v });
+      vView.replaceChildren(plate(e, { max: '280px', label: `Version ${v}` }));
+      const al = Q.alignmentPositions(v).length, alignCount = al ? al * al - 3 : 0;
+      vFacts.replaceChildren(
+        h('div.qr-formula.mono', null, `${e.size} = 17 + 4 × ${v}`),
+        h('p.muted', null, `Version ${v} is ${e.size} modules across, with ${alignCount ? `${alignCount} alignment pattern${alignCount > 1 ? 's' : ''}` : 'no alignment patterns'}${v >= 7 ? ' and version blocks beside two finders' : ''}.`),
+        h('table.qr-table', null, h('thead', null, h('tr', null, h('th', null, 'Level'), h('th', null, 'Bytes'), h('th', null, 'Digits'))),
+          h('tbody', null, 'LMQH'.split('').map(ec => h('tr', null, h('td', null, ec), h('td.num', null, Q.capacity(v, ec)), h('td.num', null, Q.capacity(v, ec, 'numeric')))))));
+    };
+    const slider = h('input', { type: 'range', id: 'qr-cover-version', min: 1, max: 40, value: v, 'aria-label': 'Version', oninput: ev => { v = +ev.target.value; vPaint(); } });
+    vPaint();
+
+    // 2 · the format strip
+    let ec = 'Q', mask = 3;
+    const fView = h('div.qr-stage'), fBits = h('div.stack');
+    const fPaint = () => {
+      const e = Q.encode('READ THE STRIP', { ec, mask });
+      const cells = [[0, 8], [1, 8], [2, 8], [3, 8], [4, 8]];
+      fView.replaceChildren(plate(e, { highlight: cells, max: '280px', label: 'Format strip highlighted' }));
+      const raw = cells.map(([x, y]) => e.modules[y * e.size + x]);
+      const xor = [1, 0, 1, 0, 1], plain = raw.map((b, i) => b ^ xor[i]);
+      fBits.replaceChildren(h('table.qr-table.qr-bits', null,
+        h('tbody', null,
+          h('tr', null, h('th', null, 'Modules'), ...raw.map(b => h('td.mono', null, b))),
+          h('tr', null, h('th', null, 'XOR'), ...xor.map(b => h('td.mono.faint', null, b))),
+          h('tr', null, h('th', null, '= value'), ...plain.map((b, i) => h('td', { class: `mono ${i < 2 ? 'qr-ec-bit' : ''}` }, b))))),
+        h('p', null, h('b', null, `EC ${Q.EC_BY_BITS[(plain[0] << 1) | plain[1]]}`), ` (${plain.slice(0, 2).join('')}) · `, h('b', null, `mask ${(plain[2] << 2) | (plain[3] << 1) | plain[4]}`), ` (${plain.slice(2).join('')}): ${Q.MASK_FORMULAS[mask]}`));
+    };
+    const ecSeg = h('div.seg', { role: 'group', 'aria-label': 'Error-correction level' }, 'LMQH'.split('').map(x =>
+      h('button', { type: 'button', id: `qr-strip-ec-${x}`, 'aria-pressed': String(ec === x), onclick: evt => { ec = x; press(evt); fPaint(); } }, x)));
+    const maskSel = h('select.input', { id: 'qr-strip-mask', 'aria-label': 'Mask', onchange: evt => { mask = +evt.target.value; fPaint(); } },
+      Q.MASKS.map((_, i) => h('option', { value: i, selected: i === mask }, `Mask ${i}`)));
+    fPaint();
+
+    // 3 · density → contents
+    const samples = [
+      ['Product number', '4006381333931'],
+      ['Short link', 'https://bit.ly/3xQz9Lm'],
+      ['Wi-Fi login', P.build.wifi({ ssid: 'Cafe Luna Guest', password: 'espresso-2026' })],
+      ['Tracked web link', 'https://shop.example/autumn-sale?utm_source=poster&utm_medium=qr&utm_campaign=oct26&store=118'],
+      ['Contact card', P.build.contact({ name: 'Ada Example', phone: '+1 555 0100 2233', email: 'ada@studio.example', org: 'Example Studio', url: 'https://studio.example' })],
+    ];
+    const gallery = h('div.qr-gallery', null, samples.map(([name, text]) => {
+      const e = Q.encode(text, { ec: 'M' });
+      return h('figure', null, plate(e, { label: name }), h('figcaption', null, h('b', null, name), h('span.faint.mono', null, `v${e.version} · ${text.length} chars`)));
+    }));
+
+    const ecRows = [['L', '7%', 'Most capacity. Clean screens.'], ['M', '15%', 'The everyday default.'], ['Q', '25%', 'Packaging, outdoor print.'], ['H', '30%', 'Logos in the middle, rough handling.']];
+    return [
+      h('div.grid.qr-lesson', null,
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '1 · Size gives the version')), h('div.sheet-body.stack', null, vView, h('label.field', { for: 'qr-cover-version' }, h('span', null, `Version`), slider))),
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Counting without counting')), h('div.sheet-body.stack', null,
+          h('p', null, 'Every version adds 4 modules to each side. You rarely need to count them all. On small codes (up to version 6), count the modules of a timing pattern between two finders and add 16, or count alignment bullseyes: none means version 1, one means 2–6, six means 7–13.'),
+          vFacts))),
+      h('div.grid.qr-lesson', null,
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '2 · The format strip')), h('div.sheet-body.stack', null, fView, h('div.row', null, ecSeg, maskSel))),
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Read five modules')), h('div.sheet-body.stack', null,
+          h('p', null, 'Under the top-left finder, the first five modules of row 8 (counting from 0, just below the separator) hold the error-correction level and the mask. They are XOR-ed with 1 0 1 0 1 so they are never all light. Undo that and you can read them by eye.'),
+          fBits))),
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '3 · Density hints at the contents')), h('div.sheet-body.stack', null,
+        h('p.muted', null, 'Same level (M), different payloads. A tiny code is a number or a short link, often one that forwards somewhere else. A dense one carries the whole thing: a long tracked URL, a contact card, a paragraph.'), gallery)),
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, '4 · Picking a level')), h('div.sheet-body', null,
+        h('table.qr-table', null, h('thead', null, h('tr', null, h('th', null, 'Level'), h('th', null, 'Repairs'), h('th', null, 'Bytes at v5'), h('th', null, 'Use it for'))),
+          h('tbody', null, ecRows.map(([x, rep, use]) => h('tr', null, h('td', null, h('b', null, x)), h('td.num', null, rep), h('td.num', null, Q.capacity(5, x)), h('td', null, use)))))))];
+  }
+  function press(evt) { evt.target.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === evt.target))); }
+
+  // ---------------------------------------------------------------- Inspect
+  const EXAMPLES = [
+    ['Menu link', 'https://cafe-luna.example/menu?table=12'],
+    ['Short link', 'https://bit.ly/3menu-table12'],
+    ['Wi-Fi', 'WIFI:T:WPA;S:Cafe Luna Guest;P:espresso-2026;;'],
+    ['Parking sticker', 'http://parking-pay-verify.com/pay?zone=4'],
+    ['2FA setup', 'otpauth://totp/Acme:ada@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Acme'],
+    ['Product', 'https://id.gs1.org/01/09506000134352'],
+  ];
+
+  function inspectTab(go) {
+    const p = progress();
+    const input = h('textarea.input.mono', { id: 'qr-inspect-text', rows: 3, spellcheck: 'false', value: ui().inspect, 'aria-label': 'QR contents' });
+    const left = h('div.stack'), right = h('div.stack');
+    const paint = () => {
+      const text = input.value;
+      setUi({ inspect: text });
+      let e;
+      try { e = Q.encode(text || ' ', { ec: 'M' }); } catch (err) { left.replaceChildren(h('div.empty', null, h('b', null, 'Too long'), err.message)); right.replaceChildren(); return; }
+      left.replaceChildren(plate(e, { max: '320px', label: 'Inspected code' }), coverReading(e, p));
+      right.replaceChildren(leadsTo(P.classify(text)));
+    };
+    input.addEventListener('input', Bench.debounce(paint, 200));
+    paint();
+    return [
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'What’s inside'), h('div.actions', null, explainSeg(() => go('inspect')))),
+        h('div.sheet-body.stack', null, input, h('div.row.qr-examples', null, h('span.faint', { style: { fontSize: 'var(--t-xs)' } }, 'Try:'),
+          EXAMPLES.map(([name, t], i) => h('button.chip', { type: 'button', id: `qr-example-${i}`, onclick: () => { input.value = t; paint(); } }, name))),
+          h('p.faint', { style: { fontSize: 'var(--t-xs)' } }, 'Camera and photo scanning are coming in the next update. For now, paste what your phone’s scanner shows you.'))),
+      h('div.grid.qr-lesson', null, h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Cover reading')), h('div.sheet-body', null, left)),
+        h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Where it leads')), h('div.sheet-body', null, right)))];
+  }
+
+  // The facts a reader can get from the outside, explained, quizzed or just listed
+  function coverReading(e, p) {
+    const used = e.bits.segment, cap = e.bits.capacity;
+    const facts = [
+      { k: 'Version', v: `${e.version} (${e.size}×${e.size})`, skill: 'cover.version', why: `${e.size} = 17 + 4 × ${e.version}.` },
+      { k: 'Error correction', v: `${e.ec} · repairs ~${Q.EC[e.ec].recover}%`, skill: 'cover.ec', why: 'Read from the format strip under the top-left finder.' },
+      { k: 'Mask', v: String(e.mask), skill: 'cover.mask', why: `Chosen for the lowest penalty: ${Q.MASK_FORMULAS[e.mask]}.` },
+      { k: 'Mode', v: { numeric: 'Numeric', alnum: 'Alphanumeric', byte: 'Byte (UTF-8)', kanji: 'Kanji' }[e.mode], skill: 'cover.contents', why: e.mode === 'byte' ? 'Lower-case or symbols force byte mode, 8 bits a character.' : 'A compact mode: fewer bits per character.' },
+      { k: 'Fill', v: `${pct(used / cap)} of ${cap / 8} bytes`, skill: 'cover.contents', why: 'How full the version is. A bigger payload would need a bigger version.' },
+    ];
+    const mode = L.scaffold(p, ['cover.version', 'cover.ec', 'cover.mask', 'cover.contents'], ui().explain);
+    if (mode === 'hide') return h('p.mono.qr-oneline', null, `v${e.version} · ${e.size}² · ${e.ec} · mask ${e.mask} · ${e.mode} · ${pct(used / cap)} full`);
+    return h('dl.qr-facts', null, facts.map((f, i) => {
+      const value = h('dd', null, f.v);
+      if (mode === 'predict') {
+        const btn = h('button.btn.sm.ghost', { type: 'button', id: `qr-reveal-${i}`, onclick: () => btn.replaceWith(h('span', null, f.v)) }, 'Guess, then reveal');
+        value.replaceChildren(btn);
+      } else value.append(h('div.faint', { style: { fontSize: 'var(--t-xs)' } }, f.why));
+      return [h('dt', null, f.k, h('span.mono.faint', { title: 'Your review box' }, ' ', boxDots(L.boxOf(p, f.skill)))), value];
+    }));
+  }
+
+  function leadsTo(c) {
+    const worst = c.flags.some(f => f.level === 'bad') ? 'bad' : c.flags.some(f => f.level === 'warn') ? 'warn' : 'good';
+    return h('div.stack', null,
+      h('div.row', null, h('span', { class: `chip ${worst}` }, worst === 'good' ? icon('check') : null, c.label), h('span.faint.mono', { style: { fontSize: 'var(--t-xs)' } }, `${c.length} chars`)),
+      h('p', { style: { fontWeight: 600 } }, c.action),
+      c.fields.length ? h('dl.qr-facts', null, c.fields.map(([k, v]) => [h('dt', null, k), h('dd.mono', { style: { overflowWrap: 'anywhere' } }, v)])) : null,
+      c.flags.length ? h('ul.list.qr-flags', null, c.flags.map(f => h('li', null, h('span', { class: `chip ${f.level === 'info' ? 'blue' : f.level}` }, f.level === 'info' ? 'Note' : f.level === 'warn' ? 'Careful' : 'Danger'), h('span.grow', null, f.msg))))
+        : h('p.faint', { style: { fontSize: 'var(--t-sm)' } }, 'No warning signs. Still check the address your phone shows before you open it.'));
+  }
+
+  // ---------------------------------------------------------------- Make
+  const KINDS = [
+    { id: 'url', label: 'Link', fields: [['url', 'Address', 'https://']] },
+    { id: 'text', label: 'Text', fields: [['text', 'Text', '', 'area']] },
+    { id: 'wifi', label: 'Wi-Fi', fields: [['ssid', 'Network name', ''], ['password', 'Password', ''], ['auth', 'Security', 'WPA', ['WPA', 'WEP', 'none']]] },
+    { id: 'contact', label: 'Contact', fields: [['name', 'Name', ''], ['phone', 'Phone', ''], ['email', 'Email', ''], ['org', 'Organisation', ''], ['url', 'Website', '']] },
+    { id: 'email', label: 'Email', fields: [['to', 'To', ''], ['subject', 'Subject', ''], ['body', 'Message', '', 'area']] },
+    { id: 'sms', label: 'SMS', fields: [['to', 'Number', ''], ['body', 'Message', '', 'area']] },
+    { id: 'tel', label: 'Phone', fields: [['to', 'Number', '']] },
+    { id: 'geo', label: 'Location', fields: [['lat', 'Latitude', '51.5007'], ['lng', 'Longitude', '-0.1246'], ['label', 'Label', '']] },
+  ];
+
+  function makeTab(go) {
+    const st = { kind: 'url', ec: 'M', mask: 'auto', values: { url: { url: 'https://bench.example/qr' } }, ...store.get('qr:make', {}) };
+    const save = () => store.set('qr:make', st);
+    const form = h('div.stack'), out = h('div.stack'), kindSeg = h('div.seg', { role: 'group', 'aria-label': 'What to encode' });
+    const payload = () => P.build[st.kind]({ ...Object.fromEntries(KINDS.find(k => k.id === st.kind).fields.map(([k, , def]) => [k, Array.isArray(def) ? def[0] : def])), ...(st.values[st.kind] || {}) });
+
+    function paintForm() {
+      kindSeg.replaceChildren(...KINDS.map(k => h('button', { type: 'button', id: `qr-make-${k.id}`, 'aria-pressed': String(st.kind === k.id), onclick: () => { st.kind = k.id; save(); paintForm(); paintOut(); } }, k.label)));
+      const kind = KINDS.find(k => k.id === st.kind), vals = st.values[st.kind] || (st.values[st.kind] = {});
+      form.replaceChildren(...kind.fields.map(([key, label, def, type]) => {
+        const id = `qr-field-${st.kind}-${key}`;
+        const set = ev => { vals[key] = ev.target.value; save(); paintOut(); };
+        let ctl;
+        if (Array.isArray(type)) ctl = h('select.input', { id, onchange: set }, type.map(o => h('option', { value: o, selected: (vals[key] ?? def) === o }, o === 'none' ? 'None (open)' : o)));
+        else if (type === 'area') ctl = h('textarea.input', { id, rows: 3, value: vals[key] ?? def, oninput: Bench.debounce(set, 150) });
+        else ctl = h('input.input', { id, value: vals[key] ?? def, oninput: Bench.debounce(set, 150), autocomplete: 'off' });
+        return h('label.field', { for: id }, h('span', null, label), ctl);
+      }),
+      h('div.row', null,
+        h('div.field', null, h('span', null, 'Error correction'), h('div.seg', { role: 'group', 'aria-label': 'Error correction' }, 'LMQH'.split('').map(x => h('button', { type: 'button', id: `qr-make-ec-${x}`, 'aria-pressed': String(st.ec === x), onclick: ev => { st.ec = x; save(); press(ev); paintOut(); } }, x)))),
+        h('label.field', { for: 'qr-make-mask' }, h('span', null, 'Mask'), h('select.input', { id: 'qr-make-mask', onchange: ev => { st.mask = ev.target.value; save(); paintOut(); } },
+          h('option', { value: 'auto', selected: st.mask === 'auto' }, 'Auto (lowest penalty)'), Q.MASKS.map((_, i) => h('option', { value: i, selected: String(st.mask) === String(i) }, `Mask ${i}`))))));
+    }
+
+    function paintOut() {
+      const text = payload();
+      let e;
+      try { e = Q.encode(text || ' ', { ec: st.ec, mask: st.mask }); }
+      catch (err) { out.replaceChildren(h('div.empty', null, h('b', null, 'Too long'), err.message)); return; }
+      const c = P.classify(text);
+      const mode = L.scaffold(progress(), ['cover.choose', 'cover.contents'], ui().explain);
+      const note = mode === 'hide' ? null : h('p.faint', { style: { fontSize: 'var(--t-xs)' } },
+        `${text.length} characters in ${e.mode} mode fill ${pct(e.bits.segment / e.bits.capacity)} of version ${e.version} at level ${e.ec}. ${st.ec === 'H' ? 'H leaves room for a logo.' : st.ec === 'L' ? 'L keeps it small but fragile.' : ''} Mask ${e.mask} scored ${e.penalties[e.mask].total} penalty points${st.mask === 'auto' ? ', the lowest of the eight' : ''}.`);
+      out.replaceChildren(
+        plate(e, { max: '340px', label: `QR code for ${c.label}` }),
+        h('div.row', null, h('span.chip', null, c.label), h('span.mono.faint', { style: { fontSize: 'var(--t-xs)' } }, `v${e.version} · ${e.size}×${e.size} · ${e.ec} · mask ${e.mask}`)),
+        note,
+        c.flags.filter(f => f.level !== 'info').map(f => h('div.row', null, h('span', { class: `chip ${f.level}` }, f.level === 'bad' ? 'Danger' : 'Careful'), h('span.muted', { style: { fontSize: 'var(--t-sm)' } }, f.msg))),
+        h('div.row', null,
+          h('button.btn.primary', { type: 'button', id: 'qr-download-png', onclick: () => downloadPng(e) }, icon('download'), 'PNG'),
+          h('button.btn', { type: 'button', id: 'qr-download-svg', onclick: () => Bench.download('qr-code.svg', exportSvg(e), 'image/svg+xml') }, icon('download'), 'SVG'),
+          h('button.btn.ghost', { type: 'button', id: 'qr-copy', onclick: () => Bench.copy(text, 'Contents copied') }, icon('copy'), 'Copy contents'),
+          h('button.btn.ghost', { type: 'button', id: 'qr-to-inspect', onclick: () => { setUi({ inspect: text }); go('inspect'); } }, 'Inspect', icon('arrow'))));
+    }
+    paintForm(); paintOut();
+    return [h('div.grid.qr-lesson', null,
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Make a code')), h('div.sheet-body.stack', null, kindSeg, form)),
+      h('section.sheet', null, h('div.sheet-head', null, h('h2', null, 'Your code')), h('div.sheet-body', null, out)))];
+  }
+
+  function exportSvg(e) {
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + codeSvg(e, { label: 'QR code' })
+      .replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" ')
+      .replace('class="qr-off"', 'fill="#ffffff"').replace('class="qr-on"', 'fill="#000000"');
+  }
+  function downloadPng(e, scale = 12, quiet = 4) {
+    const S = (e.size + quiet * 2) * scale;
+    const c = h('canvas', { width: S, height: S }), g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, S, S); g.fillStyle = '#000';
+    for (let y = 0; y < e.size; y++) for (let x = 0; x < e.size; x++) if (e.modules[y * e.size + x]) g.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale);
+    c.toBlob(b => { if (b) Bench.download('qr-code.png', b); else toast('Could not make a PNG here'); }, 'image/png');
+  }
+
+  // ---------------------------------------------------------------- page
+  const TABS = [['path', 'Path'], ['learn', 'Learn'], ['inspect', 'Inspect'], ['make', 'Make']];
+  function render(page) {
+    const arg = Bench.takeArg();
+    if (arg && typeof arg === 'object') setUi(arg);
+    const tabs = h('div.tabs', { role: 'tablist' }), body = h('div.stack', { style: { gap: '22px' } });
+    const go = (tab, patch = {}) => { setUi({ tab, ...patch }); paint(); window.scrollTo?.(0, 0); };
+    function paint() {
+      const t = ui().tab;
+      tabs.replaceChildren(...TABS.map(([id, label]) => h('button', { type: 'button', role: 'tab', id: `qr-tab-${id}`, 'aria-selected': String(t === id), onclick: () => go(id) }, label)));
+      const fn = { path: pathTab, learn: learnTab, inspect: inspectTab, make: makeTab }[t] || pathTab;
+      body.replaceChildren(...fn(go).flat().filter(Boolean));
+    }
+    const lv = L.recommendedLevel(progress());
+    page.append(h('header.page-head', null,
+      h('div', null, h('div.eyebrow', null, 'Learn'), h('h1', null, 'QR Codes')),
+      h('div.actions', null, h('span.chip.mark', null, `Level ${lv} · ${L.LEVELS[lv - 1].title}`))), tabs, body);
+    paint();
+    return null;
+  }
+
+  Bench.module({
+    id: 'qr', title: 'QR Codes', short: 'QR', icon: 'qr', group: 'make', key: 'q',
+    render,
+    badge: () => { const n = L.dueSkills(progress(), today(), readySkills()).length; return n ? String(n) : ''; },
+    commands: () => [
+      { label: 'Continue QR lesson', run: () => Bench.navigate('qr', { tab: 'learn', level: L.recommendedLevel(progress()) }) },
+      { label: 'Review due QR skills', run: () => Bench.navigate('qr', { tab: 'learn', level: 'review' }) },
+      { label: 'Make a QR code', run: () => Bench.navigate('qr', { tab: 'make' }) },
+      { label: 'Inspect QR contents', run: () => Bench.navigate('qr', { tab: 'inspect' }) },
+    ],
   });
 })(window.Bench);
 

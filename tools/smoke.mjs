@@ -18,7 +18,7 @@ if (!existsSync(file)) { console.error('Run `npm run build` first.'); process.ex
 const shots = join(root, 'dist', 'shots');
 mkdirSync(shots, { recursive: true });
 
-const MODULES = ['today', 'tasks', 'notes', 'focus', 'gamelab', 'toolbox', 'ledger', 'trips', 'settings'];
+const MODULES = ['today', 'tasks', 'notes', 'focus', 'gamelab', 'toolbox', 'qr', 'ledger', 'trips', 'settings'];
 const failures = [];
 const fail = msg => { failures.push(msg); console.log('  ✗ ' + msg); };
 const ok = msg => console.log('  ✓ ' + msg);
@@ -116,6 +116,35 @@ for (const [label, viewport, scheme] of [['desktop-light', { width: 1360, height
       await page.waitForTimeout(120);
     }
     ok('Toolbox tools render');
+
+    // QR: every tab renders, a drill answer is recorded, Make's code decodes back to its contents
+    await page.evaluate(() => { location.hash = 'qr'; });
+    await page.waitForTimeout(200);
+    for (const t of ['Learn', 'Inspect', 'Make', 'Path']) {
+      await page.getByRole('tab', { name: t }).click();
+      await page.waitForTimeout(200);
+      await page.screenshot({ path: join(shots, `qr-${t.toLowerCase()}.png`), fullPage: true });
+    }
+    await page.getByRole('tab', { name: 'Learn' }).click();
+    await page.locator('#qr-choice-0').click();
+    const answered = await page.evaluate(() => (Bench.store.get('qr') || { log: [] }).log.length);
+    if (answered !== 1) fail('QR drill answer was not recorded'); else ok('QR drill records an answer');
+    await page.locator('#qr-break').click();
+    await page.locator('#qr-break-ec-H').click();
+    await page.locator('#qr-logo').click();
+    if (!(await page.locator('.qr-stage + div .chip.good').count())) fail('QR with a pasted logo should still read'); else ok('QR break-it lesson decodes live');
+    await page.screenshot({ path: join(shots, 'qr-break.png'), fullPage: true });
+    await page.getByRole('tab', { name: 'Make' }).click();
+    await page.locator('#qr-make-wifi').click();
+    await page.locator('#qr-field-wifi-ssid').fill('Smoke Net');
+    await page.waitForTimeout(300);
+    const roundTrip = await page.evaluate(() => {
+      const s = Bench.store.get('qr:make');
+      const text = Bench.qrpayload.build.wifi(s.values.wifi);
+      return Bench.qr.decodeMatrix(Bench.qr.encode(text, { ec: s.ec }).modules).text === text && text.includes('Smoke Net');
+    });
+    if (!roundTrip) fail('QR Make round trip failed'); else ok('QR Make builds a Wi-Fi code');
+    await page.evaluate(() => { location.hash = 'today'; });
 
     // Focus timer starts and the nav shows the countdown
     await page.evaluate(() => { location.hash = 'focus'; });

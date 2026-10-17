@@ -25,6 +25,9 @@
   --bad: #b8322a;
   --bad-soft: #f5dcd9;
   --shadow: 0 1px 0 rgba(23,25,28,.04), 0 6px 20px -12px rgba(23,25,28,.25);
+  /* A QR symbol stays dark-on-light in every theme so phones can scan it off the screen */
+  --qr-on: #111315;
+  --qr-off: #ffffff;
 
   --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --f-body: "Hanken Grotesk", "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
@@ -340,3 +343,61 @@ svg { flex: none; }
 .search-btn kbd, kbd { white-space: nowrap; }
 .chip { cursor: default; }
 button.chip { cursor: pointer; }
+
+/* ---------- QR Codes ---------- */
+.qr-plate { background: var(--qr-off); border: 1px solid var(--line); border-radius: var(--r-md); line-height: 0; width: 100%; max-width: 380px; margin: 0 auto; overflow: hidden; }
+.qr-plate svg { width: 100%; height: auto; display: block; }
+.qr-plate .qr-off { fill: var(--qr-off); }
+.qr-plate .qr-on { fill: var(--qr-on); }
+.qr-plate .qr-hl { fill: var(--mark); }
+.qr-stage .qr-plate { cursor: pointer; }
+.qr-stage.breaking .qr-plate { cursor: crosshair; touch-action: none; }
+.qr-lesson { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.qr-path { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.qr-route { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; counter-reset: lv; }
+.qr-level { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; }
+.qr-level .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.qr-level h3 { font-size: var(--t-lg); }
+.qr-level.now { border-color: var(--ink); }
+.qr-level.later { box-shadow: none; background: transparent; border-style: dashed; }
+.qr-level.later h3, .qr-level.later p { color: var(--ink-3); }
+.qr-level-n { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 var(--t-md)/1 var(--f-display); background: var(--sunken); color: var(--ink-2); }
+.qr-level.now .qr-level-n { background: var(--mark); color: var(--mark-ink); }
+.qr-skills .chip { font-size: 11px; }
+.qr-bar { height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.qr-bar > i { display: block; height: 100%; background: var(--ink); border-radius: 3px; }
+.qr-level.now .qr-bar > i { background: var(--mark); }
+.qr-parts { display: flex; flex-wrap: wrap; gap: 6px; }
+.qr-parts button { border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 5px 11px; font: 600 var(--t-xs)/1.2 var(--f-body); cursor: pointer; }
+.qr-parts button[aria-pressed="true"] { background: var(--mark); border-color: var(--mark); color: var(--mark-ink); }
+.qr-parts button:disabled { opacity: .45; cursor: default; }
+.qr-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.qr-choice { justify-content: center; text-align: center; white-space: normal; min-height: 44px; }
+.qr-choice:disabled { cursor: default; opacity: .7; }
+.qr-choice.right { background: var(--good-soft); border-color: var(--good); color: var(--good); opacity: 1; }
+.qr-choice.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); opacity: 1; }
+.qr-formula { font-size: var(--t-lg); font-weight: 600; background: var(--sunken); border-radius: var(--r-sm); padding: 8px 12px; }
+.qr-table { border-collapse: collapse; font-size: var(--t-sm); width: 100%; }
+.qr-table th, .qr-table td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; }
+.qr-table th { font: 600 var(--t-xs)/1.2 var(--f-mono); color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.qr-bits { width: auto; }
+.qr-bits td { text-align: center; width: 2.4em; }
+.qr-bits td.qr-ec-bit { background: var(--mark-soft); }
+.qr-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+.qr-gallery figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.qr-gallery figcaption { display: flex; flex-direction: column; font-size: var(--t-xs); line-height: 1.35; }
+.qr-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 14px; margin: 14px 0 0; font-size: var(--t-sm); }
+.qr-facts dt { font: 600 var(--t-xs)/1.6 var(--f-mono); color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.qr-facts dd { margin: 0; min-width: 0; }
+.qr-flags > li { padding: 10px 0; align-items: flex-start; }
+.qr-flags .chip { flex: none; }
+.qr-oneline { margin-top: 14px; background: var(--sunken); padding: 8px 12px; border-radius: var(--r-sm); font-size: var(--t-sm); overflow-wrap: anywhere; }
+input[type="range"]#qr-cover-version { width: 100%; accent-color: var(--ink); }
+@media (max-width: 860px) {
+  .qr-lesson, .qr-path { grid-template-columns: minmax(0, 1fr); }
+  .qr-level { flex-wrap: wrap; }
+  .qr-level > .grow { flex-basis: calc(100% - 48px); }
+  .qr-level > .btn { margin-left: 48px; }
+}
+.qr-examples button.chip { border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); font-family: var(--f-body); }
+.qr-examples button.chip:hover { background: var(--sunken); color: var(--ink); }

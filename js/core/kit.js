@@ -71,6 +71,7 @@
     x: 'M6 6l12 12M18 6L6 18',
     pin: 'M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11zM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
     clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+    qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2.5v2.5H14zM17.5 17.5H20V20h-2.5zM14 20h.01M20 14h.01M7 7h.01M17 7h.01M7 17h.01',
   };
   function icon(name, cls) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

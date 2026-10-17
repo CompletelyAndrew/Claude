@@ -12,12 +12,13 @@ Open `dist/bench.html` straight from disk, or run `npm start` and visit http://l
 | **Focus** | Pomodoro timer that survives reloads, generated brown/pink/rain noise, a 12-week heatmap and where your time went. |
 | **Game Lab** | Animated pixel sprite editor (frames, onion skin, mirror, fill, PNG and sprite-sheet export), palette harmonies with hue-shifted shading ramps (copy as GDScript, Unity C#, `.gpl`), WCAG contrast check, an easing explorer that writes Godot 4 / DOTween / CSS code, and a dice roller with a 20,000-roll distribution chart. |
 | **Toolbox** | JSON validator/formatter, Base64/URL/HTML encoders, JWT decoder, Unix timestamps, unit converter (including 60fps frames), text case converter, UUIDs and passwords. |
+| **QR Codes** | A course that turns into a tool. Six levels from anatomy to reading a code "by its cover": tap any module to learn what it is, break a code and watch error correction repair it, read the version, EC level and mask by eye, then drill it with spaced repetition. Inspect says what a payload does and flags traps (shorteners, lookalike domains, raw IPs, `http`). Make builds link, Wi-Fi, contact, email, SMS, phone and location codes as PNG/SVG. The tools explain less as you master the skills. |
 | **Ledger** | Monthly overview with a six-month chart, transactions with bank CSV import and auto-categorising, category budgets, and an invoice builder. |
 | **Trips** | Day-by-day itinerary, grouped packing list, destination clock, a currency converter, Booking.com search, and travel spend pulled from the Ledger. |
 
 ### Everywhere
 - **Command bar**: `Ctrl K` / `⌘K` or `/`. Jump to anything, search tasks and notes, run actions. Start with `+` to add a task, `=` to calculate (`= 1920/1080`).
-- **Keys**: `n` new task · `g` then `h t n f l x m r` to switch modules · `t` theme · `?` shortcut list.
+- **Keys**: `n` new task · `g` then `h t n f l x q m r` to switch modules · `t` theme · `?` shortcut list.
 - **Themes**: light, dark, or follow the system.
 - **Backups**: Settings → Download backup / Restore. Sample data is tagged and can be cleared in one click.
 - **Installable**: served over HTTPS it registers a service worker and works offline as a PWA.
@@ -25,7 +26,7 @@ Open `dist/bench.html` straight from disk, or run `npm start` and visit http://l
 ## Development
 
 ```bash
-npm test         # 28 unit tests for the pure core (node --test, zero deps)
+npm test         # 39 unit tests for the pure core (node --test, zero deps)
 npm run build    # → dist/bench.html (single offline file) + dist/bench-artifact.html
 npm run smoke    # Playwright: every module × desktop/phone × light/dark, plus interaction checks
 npm start        # serve the source tree
